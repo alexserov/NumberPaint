@@ -14,7 +14,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\download.png"></TextBox>
+            <TextBox x:Name="source" Text="C:\Users\Serov.Alexey\Downloads\858x429.jpg"></TextBox>
             <Button Grid.Column="1" Content="Execute" Click="ButtonBase_OnClick"/>
         </Grid>
         <Separator DockPanel.Dock="Top"/>
