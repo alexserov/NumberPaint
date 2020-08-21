@@ -25,11 +25,16 @@
                 <TextBlock Text="ColorCount:"/>
                 <TextBox x:Name="MaxBpp">8</TextBox>
                 <TextBlock Text="SmallBlock:"/>
-                <TextBox x:Name="Small">9</TextBox>
+                <TextBox x:Name="Small">128</TextBox>
+                <TextBlock Text="OilifyRadius:"/>
+                <TextBox x:Name="Oilify">16</TextBox>
+                <TextBlock Text="Levels:"/>
+                <TextBox x:Name="Levels">20</TextBox>
             </StackPanel>
             <Separator DockPanel.Dock="Left" HorizontalAlignment="Left"></Separator>
             <Grid DockPanel.Dock="Right">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
@@ -46,10 +51,14 @@
                     <Image x:Name="Quantized" DockPanel.Dock="Bottom"/>
                 </DockPanel>
                 <DockPanel Grid.Column="1" Grid.Row="0" LastChildFill="True">
+                    <TextBlock Text="Oilified:" DockPanel.Dock="Top"/>
+                    <Image x:Name="Oilified" DockPanel.Dock="Bottom"/>
+                </DockPanel>
+                <DockPanel Grid.Column="1" Grid.Row="1" LastChildFill="True">
                     <TextBlock Text="Simplified:" DockPanel.Dock="Top"/>
                     <Image x:Name="Simplified" DockPanel.Dock="Bottom"/>
                 </DockPanel>
-                <DockPanel Grid.Column="1" Grid.Row="1" LastChildFill="True">
+                <DockPanel Grid.Column="2" Grid.Row="0" LastChildFill="True">
                     <TextBlock Text="Map:" DockPanel.Dock="Top"/>
                     <Image x:Name="Map" DockPanel.Dock="Bottom"/>
                 </DockPanel>
