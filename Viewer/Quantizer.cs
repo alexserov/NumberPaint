@@ -17,7 +17,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
-namespace AVNC.Classes
+namespace Viewer
 {
     /// <summary>
     /// Summary description for Class1.

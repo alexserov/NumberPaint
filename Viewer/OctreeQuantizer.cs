@@ -17,7 +17,7 @@ using System.Collections;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-namespace AVNC.Classes
+namespace Viewer
 {
     public unsafe class OctreeQuantizer : Quantizer
     {

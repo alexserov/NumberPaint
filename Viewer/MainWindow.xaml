@@ -5,29 +5,55 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Viewer"
         mc:Ignorable="d"
+        WindowState="Maximized"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
-            <ColumnDefinition/>
-        </Grid.ColumnDefinitions>
-        <Grid Grid.Column="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <ListBox x:Name="ImagesBox" SelectionChanged="ImagesBox_OnSelectionChanged"/>
-            <StackPanel Grid.Row="1">
-                <Button Content="Execute" Click="ButtonBase_OnClick"/>
+    <DockPanel LastChildFill="True">
+        <Grid DockPanel.Dock="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\download.png"></TextBox>
+            <Button Grid.Column="1" Content="Execute" Click="ButtonBase_OnClick"/>
+        </Grid>
+        <Separator DockPanel.Dock="Top"/>
+        <DockPanel DockPanel.Dock="Bottom" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="ColorCount:"/>
+                <TextBox x:Name="ColorsCount">16</TextBox>
+                <TextBlock Text="ColorCount:"/>
+                <TextBox x:Name="MaxBpp">8</TextBox>
+                <TextBlock Text="SmallBlock:"/>
+                <TextBox x:Name="Small">9</TextBox>
             </StackPanel>
-        </Grid>
-        <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition/>
-            </Grid.RowDefinitions>
-            <Image Grid.Row="0" x:Name="Source"/>
-            <Image Grid.Row="1" x:Name="Result"/>
-        </Grid>
-    </Grid>
+            <Separator DockPanel.Dock="Left" HorizontalAlignment="Left"></Separator>
+            <Grid DockPanel.Dock="Right">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Column="0" Grid.Row="0" LastChildFill="True">
+                    <TextBlock Text="Source:" DockPanel.Dock="Top"/>
+                    <Image x:Name="Source" DockPanel.Dock="Bottom"/>
+                </DockPanel>
+                <DockPanel Grid.Column="0" Grid.Row="1" LastChildFill="True">
+                    <TextBlock Text="Quantized:" DockPanel.Dock="Top"/>
+                    <Image x:Name="Quantized" DockPanel.Dock="Bottom"/>
+                </DockPanel>
+                <DockPanel Grid.Column="1" Grid.Row="0" LastChildFill="True">
+                    <TextBlock Text="Simplified:" DockPanel.Dock="Top"/>
+                    <Image x:Name="Simplified" DockPanel.Dock="Bottom"/>
+                </DockPanel>
+                <DockPanel Grid.Column="1" Grid.Row="1" LastChildFill="True">
+                    <TextBlock Text="Map:" DockPanel.Dock="Top"/>
+                    <Image x:Name="Map" DockPanel.Dock="Bottom"/>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
+    </DockPanel>
 </Window>

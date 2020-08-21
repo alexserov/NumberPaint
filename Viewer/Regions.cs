@@ -8,55 +8,34 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.Server;
 
-namespace ConsoleApplication5 {
-    internal class Program {
-        public static void Process(int small, string workdir, string namein, string nameout, string namefont, string ext, bool printMap) {
-            var imagein = Path.Combine(workdir, namein + ext);
-            var imageout = Path.Combine(workdir, nameout + ext);
-            var imageoutmap = Path.Combine(workdir, nameout + "_map" + ext);
-            var imageoutpalette = Path.Combine(workdir, nameout + "_palette" + ext);
-            var font = Path.Combine(workdir, namefont + ext);
-            var bitmap = new Bitmap(imagein);
-            var lb = new LockBitmap(bitmap);
+namespace Viewer {
+    internal class RegionWorker {
+        public static void Process(int small, Bitmap source, out Bitmap reduced, out Bitmap map) {
+            source = (Bitmap) source.Clone();
+            reduced = (Bitmap)source.Clone();
+            map = new Bitmap(source.Width, source.Height, PixelFormat.Format8bppIndexed);
+            map.Palette.Entries[0] = Color.Black;
+            map.Palette.Entries[1] = Color.White;
+            var lb = new LockBitmap(source);
             lb.LockBits();
-            var count = bitmap.Width * bitmap.Height;
-            var bi = new BI {H = (ushort)bitmap.Height, pixels = new PI[bitmap.Width, bitmap.Height], W = (ushort)bitmap.Width};
-            Color[] colors = new Color[32];
-            Color last = default;
-            byte lastCId = 255;
-            int totalColors = 0;
-            var totalpx = bitmap.Width * bitmap.Height;
-            for (int i = 0; i < bitmap.Width; i++) {
-                Console.Write($"\rreading {((i)*100)/bi.W}%        ");
-                for (int j = 0; j < bitmap.Height; j++) {
+            var bi = new BI {H = (ushort)source.Height, pixels = new PI[source.Width, source.Height], W = (ushort)source.Width};
+            int totalColors = source.Palette.Entries.Length;
+            for (int i = 0; i < source.Width; i++) {
+                for (int j = 0; j < source.Height; j++) {
                     var color = lb.GetPixel(i, j);
-                    if (color != last) {
-                        for (lastCId = 0; lastCId < 32; lastCId++) {
-                            var currColor = colors[lastCId];
-                            if (currColor == default) {
-                                last = currColor;
-                                colors[lastCId] = color;
-                                totalColors++;
-                                break;
-                            }
-
-                            if (currColor == color) {
-                                last = currColor;
-                                break;
-                            }
-                        }
-                    }
-
-                    bi.pixels[i, j] = new PI(i, j, lastCId);
+                    bi.pixels[i, j] = new PI(i, j, color);
                 }
             }
+            lb.UnlockBits();
+            lb = new LockBitmap(reduced);
+            lb.LockBits();
 
             Console.WriteLine($"\n==========");
             Console.WriteLine($"{totalColors} colors found");
-            bi.segmentMap = new int[bitmap.Width, bitmap.Height];
+            bi.segmentMap = new int[source.Width, source.Height];
             List<SI> segments = new List<SI>();
-            for (int i = 0; i < bitmap.Width; i++) {
-                for (int j = 0; j < bitmap.Height; j++) {
+            for (int i = 0; i < source.Width; i++) {
+                for (int j = 0; j < source.Height; j++) {
                     var segmentIndex = bi.segmentMap[i, j];
                     if (segmentIndex == default) {
                         segmentIndex = segments.Count+1;
@@ -145,59 +124,57 @@ namespace ConsoleApplication5 {
             for (int i = 0; i < bi.W; i++) {
                 Console.Write($"\rwriting {((i)*100)/bi.W}%        ");
                 for (int j = 0; j < bi.H; j++) {
-                    lb.SetPixel(i,j,colors[bi.pixels[i,j].colorIndex]);
+                    lb.SetPixel(i,j,bi.pixels[i,j].colorIndex);
                 }
             }
 
             lb.UnlockBits();
-            bitmap.Save(imageout);
+            lb = new LockBitmap(map);
             lb.LockBits();
-            if(!printMap)
-                return;
-            
+
             Console.WriteLine($"\n==========");
             foreach (var si in segments.OrderByDescending(x=>x.items.Length)) {
                 Console.Write($"{si.items.Length}, ");
             }
 
-            Console.WriteLine($"\n==========");
-            var colorFontValues = Enumerable.Range(0, colors.Count()).ToDictionary(x => x, x => GetColorIndexBytes(font, x+1));
-            for (int i = 0; i < bi.W; i++) {
-                for (int j = 0; j < bi.H; j++) {
-                    lb.SetPixel(i,j, Color.White);
-                }
-            }
-            
-            for (var index = 0; index < segments.Count; index++) {
-                Console.Write($"\rprocessing {index} of {segments.Count}");
-                var si = segments[index];
-                var sc = si.GetCenter(bi);
-                var img = colorFontValues[si.colorIndex];
-                var lt = sc.Move(img.Length/2, 0, bi, out var ltsSuccess);
-                if (!ltsSuccess)
-                    lt = bi.pixels[bi.W - 1, lt.Y];
-                lt = lt.Move(0, img[0].Length/2, bi, out ltsSuccess);
-                if (!ltsSuccess)
-                    lt = bi.pixels[lt.X, bi.H-1];
-                lt = lt.Move(-img.Length, 0, bi, out ltsSuccess);
-                if (!ltsSuccess)
-                    lt = bi.pixels[0, lt.Y];
-                lt = lt.Move(0, -img[0].Length, bi, out ltsSuccess);
-                if (!ltsSuccess)
-                    lt = bi.pixels[lt.X, 0];
-                
-                var left = (int)lt.X;
-                for (int i = 0; i < img.Length; i++) {
-                    left++;
-                    var top = (int)lt.Y;
-                    for (int j = 0; j < img[0].Length; j++) {
-                        top++;
-
-                        if (img[i][j])
-                            lb.SetPixel(left, top, Color.Black);
-                    }
-                }
-            }
+//            Console.WriteLine($"\n==========");
+//            var colorFontValues = Enumerable.Range(0, colors.Count()).ToDictionary(x => x, x => GetColorIndexBytes(font, x+1));
+//            for (int i = 0; i < bi.W; i++) {
+//                for (int j = 0; j < bi.H; j++) {
+//                    lb.SetPixel(i,j, Color.White);
+//                }
+//            }
+//            
+//            for (var index = 0; index < segments.Count; index++) {
+//                Console.Write($"\rprocessing {index} of {segments.Count}");
+//                var si = segments[index];
+//                var sc = si.GetCenter(bi);
+//                var img = colorFontValues[si.colorIndex];
+//                var lt = sc.Move(img.Length/2, 0, bi, out var ltsSuccess);
+//                if (!ltsSuccess)
+//                    lt = bi.pixels[bi.W - 1, lt.Y];
+//                lt = lt.Move(0, img[0].Length/2, bi, out ltsSuccess);
+//                if (!ltsSuccess)
+//                    lt = bi.pixels[lt.X, bi.H-1];
+//                lt = lt.Move(-img.Length, 0, bi, out ltsSuccess);
+//                if (!ltsSuccess)
+//                    lt = bi.pixels[0, lt.Y];
+//                lt = lt.Move(0, -img[0].Length, bi, out ltsSuccess);
+//                if (!ltsSuccess)
+//                    lt = bi.pixels[lt.X, 0];
+//                
+//                var left = (int)lt.X;
+//                for (int i = 0; i < img.Length; i++) {
+//                    left++;
+//                    var top = (int)lt.Y;
+//                    for (int j = 0; j < img[0].Length; j++) {
+//                        top++;
+//
+//                        if (img[i][j])
+//                            lb.SetPixel(left, top, Color.Black);
+//                    }
+//                }
+//            }
 
             Console.WriteLine($"\n==========");
             for (int i = 0; i < bi.W; i++) {
@@ -213,9 +190,7 @@ namespace ConsoleApplication5 {
                             shouldMark = true;
                     }
 
-                    if (shouldMark) {
-                        lb.SetPixel(i, j, Color.Black);
-                    }
+                    lb.SetPixel(i, j, shouldMark ? (byte)0 : (byte)1);
                     // else {
                     //     var color = Color.White;
                     //     var cfw = colorFontValues[bi.pixels[i, j].colorIndex];
@@ -226,15 +201,6 @@ namespace ConsoleApplication5 {
                 }
             }
             lb.UnlockBits();
-            bitmap.Save(imageoutmap);
-            lb.LockBits();
-            var bmp = new Bitmap(1500,3000);
-            for (int i = 0; i < colors.Length; i++) {
-                if(colors[i]==default)
-                    break;
-                Console.WriteLine($"{i+1} - {colors[i].Name}");
-            }
-            //for(int i = 0; i<)
         }
         static bool[][] GetColorIndexBytes(string fontName, int value) {
             var bitmap = new Bitmap(fontName);
@@ -245,7 +211,7 @@ namespace ConsoleApplication5 {
             bool[,] bmp = new bool[bitmap.Width, h];
             for (int i = 0; i < bitmap.Width; i++) {
                 for (int j = 0; j < h; j++) {
-                    bmp[i, j] = lb.GetPixel(i, j).R == 0;
+                    bmp[i, j] = lb.GetPixel(i, j) == 0;
                 }
             }
             lb.UnlockBits();
@@ -413,116 +379,30 @@ namespace ConsoleApplication5 {
         Bitmap source = null;
         IntPtr Iptr = IntPtr.Zero;
         BitmapData bitmapData = null;
-        int lockCount = 0;
         Rectangle rect;
 
         public int PixelCount { get; private set; }
         public byte[] Pixels { get; set; }
-        public Color[] Colors { get; private set; }
-        public int Depth { get; private set; }
         public int Width { get; private set; }
         public int Height { get; private set; }
 
         public LockBitmap(Bitmap source) {
             this.source = source;
+            this.rect = new Rectangle(0,0, source.Width, source.Height);
+            Width = source.Width;
+            Height = source.Height;
+            PixelCount = Width * Height;
         }
 
 
         public void LockBits() {
-            if (this.lockCount != 0) {
-                bitmapData = source.LockBits(rect, ImageLockMode.ReadWrite,
-                                             source.PixelFormat);
-                Iptr = bitmapData.Scan0;
-                return;
-            }
-
-            this.lockCount++;
-            var splitted = LockBitsImpl().Result;
-            Colors = new Color[PixelCount];
-            var colorCount = 0L;
-            for (int i = 0; i < 4; i++) {
-                var curr = splitted[i];
-                curr.CopyTo(Colors, colorCount);
-                colorCount += curr.Length;
-            }
-        }
-        async Task<Color[][]> LockBitsImpl() {
-            // Get width and height of bitmap
-            Width = source.Width;
-            Height = source.Height;
-
-            // get total locked pixels count
-            PixelCount = Width * Height;
-
-            // Create rectangle to lock
-            rect = new Rectangle(0, 0, Width, Height);
-
-            // get source bitmap pixel format size
-            Depth = System.Drawing.Bitmap.GetPixelFormatSize(source.PixelFormat);
-
-            // Check if bpp (Bits Per Pixel) is 8, 24, or 32
-            if (Depth != 8 && Depth != 24 && Depth != 32) {
-                throw new ArgumentException("Only 8, 24 and 32 bpp images are supported.");
-            }
-
-            // Lock bitmap and return bitmap data
             bitmapData = source.LockBits(rect, ImageLockMode.ReadWrite,
-                                         source.PixelFormat);
-
-            // create byte array to copy pixel values
-            int step = Depth / 8;
-            Pixels = new byte[PixelCount * step];
+                source.PixelFormat);
+            Pixels = new byte[PixelCount];
             Iptr = bitmapData.Scan0;
-            var cCount = Depth / 8;
-            var pcs = PixelCount / 4 + 1;
-
-            // Copy data from pointer to array
             Marshal.Copy(Iptr, Pixels, 0, Pixels.Length);
-
-            return await Task.WhenAll(Enumerable.Range(0, 4).Select(seed => Task.Run(() => {
-                var count = pcs;
-                if (seed == 3)
-                    count = PixelCount - pcs * 3;
-                var result = new Color[count];
-                var i = seed * pcs;
-                for (int curr = 0; curr < count; curr++) {
-                    var j = i * cCount;
-                    Color clr = default;
-                    if (Depth == 32) // For 32 bpp get Red, Green, Blue and Alpha
-                    {
-                        byte b = Pixels[j];
-                        byte g = Pixels[j + 1];
-                        byte r = Pixels[j + 2];
-                        byte a = Pixels[j + 3]; // a
-                        clr = Color.FromArgb(a, r, g, b);
-                    }
-
-                    if (Depth == 24) // For 24 bpp get Red, Green and Blue
-                    {
-                        byte b = Pixels[j];
-                        byte g = Pixels[j + 1];
-                        byte r = Pixels[j + 2];
-                        clr = Color.FromArgb(r, g, b);
-                    }
-
-                    if (Depth == 8)
-                        // For 8 bpp get color value (Red, Green and Blue values are the same)
-                    {
-                        byte c = Pixels[j];
-                        clr = Color.FromArgb(c, c, c);
-                    }
-
-                    i++;
-                    result[curr] = clr;
-                }
-
-                return result;
-            })));
         }
 
-        /// <summary>
-        /// Unlock bitmap data
-        /// </summary>
         public void UnlockBits() {
             try {
                 // Copy data from byte array to pointer
@@ -535,50 +415,12 @@ namespace ConsoleApplication5 {
                 throw ex;
             }
         }
-
-        /// <summary>
-        /// Get the color of the specified pixel
-        /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <returns></returns>
-        public Color GetPixel(int x, int y) {
-            return Colors[(y * Width) + x];
+        public byte GetPixel(int x, int y) {
+            return Pixels[(y * Width) + x];
         }
-
-        /// <summary>
-        /// Set the color of the specified pixel
-        /// </summary>ffo
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <param name="color"></param>
-        public void SetPixel(int x, int y, Color color) {
-            // Get color components count
-            int cCount = Depth / 8;
-
-            // Get start index of the specified pixel
-            int i = ((y * Width) + x) * cCount;
-
-            if (Depth == 32) // For 32 bpp set Red, Green, Blue and Alpha
-            {
-                Pixels[i] = color.B;
-                Pixels[i + 1] = color.G;
-                Pixels[i + 2] = color.R;
-                Pixels[i + 3] = color.A;
-            }
-
-            if (Depth == 24) // For 24 bpp set Red, Green and Blue
-            {
-                Pixels[i] = color.B;
-                Pixels[i + 1] = color.G;
-                Pixels[i + 2] = color.R;
-            }
-
-            if (Depth == 8)
-                // For 8 bpp set color value (Red, Green and Blue values are the same)
-            {
-                Pixels[i] = color.B;
-            }
+        public void SetPixel(int x, int y, byte color) {
+            int i = ((y * Width) + x);
+            Pixels[i] = color;
         }
     }
 }
