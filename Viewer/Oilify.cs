@@ -1,32 +1,38 @@
 ﻿using System;
 using System.Drawing;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
-namespace Viewer {
-    public class Oilify {
-        public void Execute(Bitmap bIn, out Bitmap bOut, int radius, float intensityLevels, int colorCount) {
+namespace Viewer
+{
+    public class Oilify
+    {
+        public void Execute(Bitmap bIn, out Bitmap bOut, int radius, float intensityLevels, int colorCount)
+        {
             var lbIn = new LockBitmap(bIn);
-            bOut = (Bitmap) bIn.Clone();
+            bOut = (Bitmap)bIn.Clone();
             var lbOut = new LockBitmap(bOut);
             lbIn.LockBits();
             lbOut.LockBits();
-            ExecuteImpl2(lbIn.Pixels, radius, intensityLevels, bIn.Width, bIn.Height, lbOut.Pixels, bIn.Palette.Entries, (byte) colorCount);
+            ExecuteImplUnmanaged(lbIn.Pixels, radius, intensityLevels, bIn.Width, bIn.Height, lbOut.Pixels, bIn.Palette.Entries, (byte)colorCount);
             lbIn.UnlockBits();
             lbOut.UnlockBits();
         }
 
-        struct ColorRange {
+        struct ColorRange
+        {
             public int from;
             public int to;
             public int value;
         }
 
-        void ExecuteImpl2(byte[] pbyDataIn_i,
+        void ExecuteImpl(byte[] pbyDataIn_i,
                           int nRadius_i,
                           float fIntensityLevels_i,
                           int nWidth_i,
                           int nHeight_i,
-                          byte[] pbyDataOut_o, Color[] palette, byte paletteLength) {
+                          byte[] pbyDataOut_o, Color[] palette, byte paletteLength)
+        {
             var nIntensityCount = new int[256];
             var nSumR = new int[256];
             var nSumG = new int[256];
@@ -36,8 +42,10 @@ namespace Viewer {
 
 
             // nRadius pixels are avoided from left, right top, and bottom edges.
-            for (int nY = nRadius_i; nY < nHeight_i - nRadius_i; nY++) {
-                for (int nX = nRadius_i; nX < nWidth_i - nRadius_i; nX++) {
+            for (int nY = nRadius_i; nY < nHeight_i - nRadius_i; nY++)
+            {
+                for (int nX = nRadius_i; nX < nWidth_i - nRadius_i; nX++)
+                {
                     // Reset calculations of last pixel.
                     nIntensityCount = new int[256];
                     nSumR = new int[256];
@@ -45,12 +53,15 @@ namespace Viewer {
                     nSumB = new int[256];
 
                     // Find intensities of nearest nRadius pixels in four direction.
-                    for (int nY_O = -nRadius_i; nY_O <= nRadius_i; nY_O++) {
-                        for (int nX_O = -nRadius_i; nX_O <= nRadius_i; nX_O++) {
+                    for (int nY_O = -nRadius_i; nY_O <= nRadius_i; nY_O++)
+                    {
+                        for (int nX_O = -nRadius_i; nX_O <= nRadius_i; nX_O++)
+                        {
                             var nY_S = nY + nY_O;
                             var nX_S = nX + nX_O;
                             var n = pbyDataIn_i[nX + nY * nBytesInARow];
-                            if (nY_S >= 0 && nY_S < nHeight_i && nX_S >= 0 && nX_S < nWidth_i) {
+                            if (nY_S >= 0 && nY_S < nHeight_i && nX_S >= 0 && nX_S < nWidth_i)
+                            {
                                 n = pbyDataIn_i[nX_S + nY_S * nBytesInARow];
                             }
 
@@ -60,7 +71,7 @@ namespace Viewer {
                             int nB = nC.B;
 
                             // Find intensity of RGB value and apply intensity level.
-                            int nCurIntensity = (int) ((((nR + nG + nB) / 3.0) * fIntensityLevels_i) / 255);
+                            int nCurIntensity = (int)((((nR + nG + nB) / 3.0) * fIntensityLevels_i) / 255);
                             if (nCurIntensity > 255)
                                 nCurIntensity = 255;
                             int i = nCurIntensity;
@@ -78,8 +89,10 @@ namespace Viewer {
 
                     int nCurMax = 0;
                     int nMaxIndex = 0;
-                    for (int nI = 0; nI < 256; nI++) {
-                        if (nIntensityCount[nI] > nCurMax) {
+                    for (int nI = 0; nI < 256; nI++)
+                    {
+                        if (nIntensityCount[nI] > nCurMax)
+                        {
                             nCurMax = nIntensityCount[nI];
                             nMaxIndex = nI;
                         }
@@ -93,17 +106,21 @@ namespace Viewer {
                 }
             }
 
-            byte GetClosestPaletteColorIndex(Color[] palette, Color target, byte count) {
+            byte GetClosestPaletteColorIndex(Color[] palette, Color target, byte count)
+            {
                 var results = new double[count];
-                for (int i = 0; i < count; i++) {
+                for (int i = 0; i < count; i++)
+                {
                     var currentColor = palette[i];
                     results[i] = Math.Sqrt(Math.Pow(currentColor.R - target.R, 2) + Math.Pow(currentColor.G - target.G, 2) + Math.Pow(currentColor.B - target.B, 2));
                 }
 
                 var min = double.MaxValue;
                 byte minIndex = 0;
-                for (byte i = 0; i < count; i++) {
-                    if (results[i] < min) {
+                for (byte i = 0; i < count; i++)
+                {
+                    if (results[i] < min)
+                    {
                         min = results[i];
                         minIndex = i;
                     }
@@ -117,20 +134,26 @@ namespace Viewer {
                              float intensityLevels,
                              int width,
                              int height,
-                             byte[] bitmapOut, int colorsCount) {
+                             byte[] bitmapOut, int colorsCount)
+            {
 
                 var surround = new byte[(radius * 2 + 1) * (radius * 2 + 1)];
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
                         var index = y * width + x;
                         var currentColor = bitmapIn[index];
-                        for (int iR = -radius; iR <= radius; iR++) {
-                            for (int jR = -radius; jR <= radius; jR++) {
+                        for (int iR = -radius; iR <= radius; iR++)
+                        {
+                            for (int jR = -radius; jR <= radius; jR++)
+                            {
                                 var column = y + iR;
                                 var row = x + jR;
 
                                 var indexSurround = (iR + radius) * (radius * 2 + 1) + jR + radius;
-                                if (row < 0 || row >= height || column < 0 || column >= width) {
+                                if (row < 0 || row >= height || column < 0 || column >= width)
+                                {
                                     surround[indexSurround] = currentColor;
                                     continue;
                                 }
@@ -147,7 +170,8 @@ namespace Viewer {
                 }
             }
 
-            byte findPopular(byte[] a) {
+            byte findPopular(byte[] a)
+            {
 
                 if (a == null || a.Length == 0)
                     return 0;
@@ -159,11 +183,14 @@ namespace Viewer {
                 int count = 1;
                 int maxCount = 1;
 
-                for (int i = 1; i < a.Length; i++) {
+                for (int i = 1; i < a.Length; i++)
+                {
                     if (a[i] == previous)
                         count++;
-                    else {
-                        if (count > maxCount) {
+                    else
+                    {
+                        if (count > maxCount)
+                        {
                             popular = a[i - 1];
                             maxCount = count;
                         }
@@ -178,97 +205,48 @@ namespace Viewer {
             }
         }
 
-        void ExecuteImpl23(byte[] input,
+        [DllImport("GPUOperations.dll", EntryPoint = "Oilify")]
+        static extern void OilifyImpl(int radius, float intensity, int width, int height, byte[] input, byte[] output, byte[] palette, byte paletteLength);
+
+        void ExecuteImplUnmanaged(byte[] input,
                           int radius,
                           float intensity,
                           int width,
                           int height,
-                          byte[] output, Color[] palette, byte paletteLength) {
-            var nIntensityCount = new int[256];
-            var nSumR = new int[256];
-            var nSumG = new int[256];
-            var nSumB = new int[256];
-
-            var nBytesInARow = width;
-
-
-            // nRadius pixels are avoided from left, right top, and bottom edges.
-            for (int nY = radius; nY < height - radius; nY++) {
-                for (int nX = radius; nX < width - radius; nX++) {
-                    // Reset calculations of last pixel.
-                    nIntensityCount = new int[256];
-                    nSumR = new int[256];
-                    nSumG = new int[256];
-                    nSumB = new int[256];
-
-                    // Find intensities of nearest nRadius pixels in four direction.
-                    for (int nY_O = -radius; nY_O <= radius; nY_O++) {
-                        for (int nX_O = -radius; nX_O <= radius; nX_O++) {
-                            var nY_S = nY + nY_O;
-                            var nX_S = nX + nX_O;
-                            var n = input[nX + nY * nBytesInARow];
-                            if (nY_S >= 0 && nY_S < height && nX_S >= 0 && nX_S < width) {
-                                n = input[nX_S + nY_S * nBytesInARow];
-                            }
-
-                            var nC = palette[n];
-                            int nR = nC.R;
-                            int nG = nC.G;
-                            int nB = nC.B;
-
-                            // Find intensity of RGB value and apply intensity level.
-                            int nCurIntensity = (int) ((((nR + nG + nB) / 3.0) * intensity) / 255);
-                            if (nCurIntensity > 255)
-                                nCurIntensity = 255;
-                            int i = nCurIntensity;
-                            nIntensityCount[i]++;
-
-                            nSumR[i] = nSumR[i] + nR;
-                            nSumG[i] = nSumG[i] + nG;
-                            nSumB[i] = nSumB[i] + nB;
-                        }
-                    }
-
-                    int nOutR = 0;
-                    int nOutG = 0;
-                    int nOutB = 0;
-
-                    int nCurMax = 0;
-                    int nMaxIndex = 0;
-                    for (int nI = 0; nI < 256; nI++) {
-                        if (nIntensityCount[nI] > nCurMax) {
-                            nCurMax = nIntensityCount[nI];
-                            nMaxIndex = nI;
-                        }
-                    }
-
-                    nOutR = nSumR[nMaxIndex] / nCurMax;
-                    nOutG = nSumG[nMaxIndex] / nCurMax;
-                    nOutB = nSumB[nMaxIndex] / nCurMax;
-
-                    output[(nX) + (nY) * nBytesInARow] = GetClosestPaletteColorIndex(palette, Color.FromArgb(255, nOutR, nOutG, nOutB), paletteLength);
-                }
+                          byte[] output, Color[] palette, byte paletteLength)
+        {
+            byte[] charPalette = new byte[palette.Length * 3];
+            for(int i = 0; i< paletteLength; i++)
+            {
+                charPalette[i * 3 + 0] = (byte)palette[i].R;
+                charPalette[i * 3 + 1] = (byte)palette[i].G;
+                charPalette[i * 3 + 2] = (byte)palette[i].B;
             }
-
-            byte GetClosestPaletteColorIndex(Color[] palette, Color target, byte count) {
-                var results = new double[count];
-                for (int i = 0; i < count; i++) {
-                    var currentColor = palette[i];
-                    results[i] = Math.Sqrt(Math.Pow(currentColor.R - target.R, 2) + Math.Pow(currentColor.G - target.G, 2) + Math.Pow(currentColor.B - target.B, 2));
-                }
-
-                var min = double.MaxValue;
-                byte minIndex = 0;
-                for (byte i = 0; i < count; i++) {
-                    if (results[i] < min) {
-                        min = results[i];
-                        minIndex = i;
-                    }
-                }
-
-                return minIndex;
-            }
+            OilifyImpl(radius, intensity, width, height, input, output, charPalette, paletteLength);
         }
 
+        byte GetClosestPaletteColorIndex(Color[] palette, Color target, byte count)
+        {
+            var results = new double[count];
+            for (int i = 0; i < count; i++)
+            {
+                var currentColor = palette[i];
+                results[i] = Math.Sqrt(Math.Pow(currentColor.R - target.R, 2) + Math.Pow(currentColor.G - target.G, 2) + Math.Pow(currentColor.B - target.B, 2));
+            }
+
+            var min = double.MaxValue;
+            byte minIndex = 0;
+            for (byte i = 0; i < count; i++)
+            {
+                if (results[i] < min)
+                {
+                    min = results[i];
+                    minIndex = i;
+                }
+            }
+
+            return minIndex;
+        }
     }
+
 }
