@@ -9,7 +9,6 @@
 
     <ItemGroup>
       <None Remove="Sample\download.png" />
-      <EmbeddedResource Include="Sample\download.png" />
     </ItemGroup>
 
     <ItemGroup>

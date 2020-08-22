@@ -14,7 +14,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="source" Text="C:\Users\Serov.Alexey\Downloads\858x429.jpg"></TextBox>
+            <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\1.png"></TextBox>
             <Button Grid.Column="1" Content="Execute" Click="ButtonBase_OnClick"/>
         </Grid>
         <Separator DockPanel.Dock="Top"/>
@@ -27,7 +27,7 @@
                 <TextBlock Text="SmallBlock:"/>
                 <TextBox x:Name="Small">128</TextBox>
                 <TextBlock Text="OilifyRadius:"/>
-                <TextBox x:Name="Oilify">16</TextBox>
+                <TextBox x:Name="Oilify">1</TextBox>
                 <TextBlock Text="Levels:"/>
                 <TextBox x:Name="Levels">20</TextBox>
             </StackPanel>
