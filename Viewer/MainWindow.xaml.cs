@@ -1,10 +1,14 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using PixelFormat = System.Windows.Media.PixelFormat;
 
 namespace Viewer {
     /// <summary>
@@ -16,14 +20,32 @@ namespace Viewer {
 
         }
 
-        ImageSource FromBitmap(Bitmap source) {
-            var result = new BitmapImage();
-            var ms = new MemoryStream();
-            source.Save(ms, ImageFormat.Png);
-            ms.Position = 0;
-            result.BeginInit();
-            result.StreamSource = ms;
-            result.EndInit();
+        unsafe ImageSource FromBitmap(Bitmap source) {
+            var pf = PixelFormats.Bgra32;
+            switch (source.PixelFormat) {
+                case System.Drawing.Imaging.PixelFormat.Format8bppIndexed:
+                    pf = PixelFormats.Indexed8;
+                    break;
+                case  System.Drawing.Imaging.PixelFormat.Format24bppRgb:
+                    pf = PixelFormats.Bgr24;
+                    break;
+                case System.Drawing.Imaging.PixelFormat.Format32bppArgb:
+                    pf = PixelFormats.Bgra32;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            BitmapPalette palette = null;
+            if (source.PixelFormat == System.Drawing.Imaging.PixelFormat.Format8bppIndexed) {
+                pf = PixelFormats.Indexed8;
+                palette = new BitmapPalette(source.Palette.Entries.Select(x => System.Windows.Media.Color.FromArgb(x.A, x.R, x.G, x.B)).ToList());
+            }
+            var result = new WriteableBitmap(source.Width, source.Height, source.HorizontalResolution, source.VerticalResolution, pf, palette);
+            var data = source.LockBits(new Rectangle(0, 0, source.Width, source.Height), ImageLockMode.ReadOnly, source.PixelFormat);
+            var bytes = new byte[data.Height * data.Stride];
+            Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
+            result.WritePixels(new Int32Rect(0, 0, source.Width, source.Height), bytes, data.Stride, 0);
+            source.UnlockBits(data);
 
             return result;
         }

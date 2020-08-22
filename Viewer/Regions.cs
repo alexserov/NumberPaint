@@ -14,8 +14,11 @@ namespace Viewer {
             source = (Bitmap) source.Clone();
             reduced = (Bitmap)source.Clone();
             map = new Bitmap(source.Width, source.Height, PixelFormat.Format8bppIndexed);
-            map.Palette.Entries[0] = Color.Black;
-            map.Palette.Entries[1] = Color.White;
+            var palette = map.Palette;
+            palette.Entries[0] = Color.Black;
+            palette.Entries[1] = Color.White;
+            palette.Entries[2] = Color.FromArgb(0, 0, 0, 0);
+            map.Palette = palette;
             var lb = new LockBitmap(source);
             lb.LockBits();
             var bi = new BI {H = (ushort)source.Height, pixels = new PI[source.Width, source.Height], W = (ushort)source.Width};
