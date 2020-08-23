@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Viewer", "Viewer\Viewer.csp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GPUOperations", "GPUOperations\GPUOperations.vcxproj", "{7F6B25C4-39B8-43D6-8805-D0AE34298539}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GPUOperationsTestExecutor", "GPUOperationsTestExecutor\GPUOperationsTestExecutor.vcxproj", "{71A05B08-B6F5-4813-9AD1-A17F2578F433}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,17 @@ Global
 		{7F6B25C4-39B8-43D6-8805-D0AE34298539}.Release|x64.ActiveCfg = Release|x64
 		{7F6B25C4-39B8-43D6-8805-D0AE34298539}.Release|x64.Build.0 = Release|x64
 		{7F6B25C4-39B8-43D6-8805-D0AE34298539}.Release|x86.ActiveCfg = Release|x64
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Debug|Any CPU.Build.0 = Debug|x64
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Debug|x64.ActiveCfg = Debug|x64
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Debug|x64.Build.0 = Debug|x64
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Debug|x86.ActiveCfg = Debug|Win32
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Debug|x86.Build.0 = Debug|Win32
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Release|Any CPU.ActiveCfg = Release|Win32
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Release|x64.ActiveCfg = Release|x64
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Release|x64.Build.0 = Release|x64
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Release|x86.ActiveCfg = Release|Win32
+		{71A05B08-B6F5-4813-9AD1-A17F2578F433}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

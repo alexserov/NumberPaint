@@ -1,20 +1,26 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Windows.Input;
 
 namespace Viewer
 {
     public class Oilify
     {
-        public void Execute(Bitmap bIn, out Bitmap bOut, int radius, float intensityLevels, int colorCount)
+        public void Execute(Bitmap bIn, out Bitmap bOut, int radius, float intensityLevels, int colorCount, bool cuda)
         {
             var lbIn = new LockBitmap(bIn);
             bOut = (Bitmap)bIn.Clone();
             var lbOut = new LockBitmap(bOut);
             lbIn.LockBits();
             lbOut.LockBits();
-            ExecuteImplUnmanaged(lbIn.Pixels, radius, intensityLevels, bIn.Width, bIn.Height, lbOut.Pixels, bIn.Palette.Entries, (byte)colorCount);
+            if (cuda)
+                ExecuteImplUnmanaged(lbIn.Pixels, radius, intensityLevels, bIn.Width, bIn.Height, lbOut.Pixels, bIn.Palette.Entries, (byte)colorCount);
+            else
+                ExecuteImpl(lbIn.Pixels, radius, intensityLevels, bIn.Width, bIn.Height, lbOut.Pixels, bIn.Palette.Entries, (byte)colorCount);
             lbIn.UnlockBits();
             lbOut.UnlockBits();
         }
@@ -26,55 +32,62 @@ namespace Viewer
             public int value;
         }
 
-        void ExecuteImpl(byte[] pbyDataIn_i,
-                          int nRadius_i,
-                          float fIntensityLevels_i,
-                          int nWidth_i,
-                          int nHeight_i,
-                          byte[] pbyDataOut_o, Color[] palette, byte paletteLength)
+        void ExecuteImpl(byte[] input,
+                          int radius,
+                          float intensity,
+                          int width,
+                          int height,
+                          byte[] output, Color[] paletteIn, byte paletteLength)
         {
             var nIntensityCount = new int[256];
-            var nSumR = new int[256];
-            var nSumG = new int[256];
-            var nSumB = new int[256];
+            var nSumR = new float[256];
+            var nSumG = new float[256];
+            var nSumB = new float[256];
 
-            var nBytesInARow = nWidth_i;
+            var nBytesInARow = width;
+
+            byte[] palette = new byte[paletteLength * 3];
+            for (int i = 0; i < paletteLength; i++)
+            {
+                palette[i * 3 + 0] = (byte)paletteIn[i].R;
+                palette[i * 3 + 1] = (byte)paletteIn[i].G;
+                palette[i * 3 + 2] = (byte)paletteIn[i].B;
+            }
 
 
             // nRadius pixels are avoided from left, right top, and bottom edges.
-            for (int nY = nRadius_i; nY < nHeight_i - nRadius_i; nY++)
+            for (int nY = radius; nY < height - radius; nY++)
             {
-                for (int nX = nRadius_i; nX < nWidth_i - nRadius_i; nX++)
+                for (int nX = radius; nX < width - radius; nX++)
                 {
                     // Reset calculations of last pixel.
                     nIntensityCount = new int[256];
-                    nSumR = new int[256];
-                    nSumG = new int[256];
-                    nSumB = new int[256];
+                    nSumR = new float[256];
+                    nSumG = new float[256];
+                    nSumB = new float[256];             
 
                     // Find intensities of nearest nRadius pixels in four direction.
-                    for (int nY_O = -nRadius_i; nY_O <= nRadius_i; nY_O++)
+                    for (int nY_O = -radius; nY_O <= radius; nY_O++)
                     {
-                        for (int nX_O = -nRadius_i; nX_O <= nRadius_i; nX_O++)
+                        for (int nX_O = -radius; nX_O <= radius; nX_O++)
                         {
-                            var nY_S = nY + nY_O;
-                            var nX_S = nX + nX_O;
-                            var n = pbyDataIn_i[nX + nY * nBytesInARow];
-                            if (nY_S >= 0 && nY_S < nHeight_i && nX_S >= 0 && nX_S < nWidth_i)
+                            int nY_S = nY + nY_O;
+                            int nX_S = nX + nX_O;
+                            int n = input[nX + nY * width];
+                            if (nY_S >= 0 && nY_S < height && nX_S >= 0 && nX_S < width)
                             {
-                                n = pbyDataIn_i[nX_S + nY_S * nBytesInARow];
+                                n = input[nX_S + nY_S * width];
                             }
 
-                            var nC = palette[n];
-                            int nR = nC.R;
-                            int nG = nC.G;
-                            int nB = nC.B;
+                            float nR = palette[n * 3 + 0];
+                            float nG = palette[n * 3 + 1];
+                            float nB = palette[n * 3 + 2];
 
                             // Find intensity of RGB value and apply intensity level.
-                            int nCurIntensity = (int)((((nR + nG + nB) / 3.0) * fIntensityLevels_i) / 255);
+                            float nCurIntensity = (int)((((float)(nR + nG + nB) / 3.0) * intensity) / 255.0);
                             if (nCurIntensity > 255)
                                 nCurIntensity = 255;
-                            int i = nCurIntensity;
+                            int i = (int)nCurIntensity;
                             nIntensityCount[i]++;
 
                             nSumR[i] = nSumR[i] + nR;
@@ -98,30 +111,24 @@ namespace Viewer
                         }
                     }
 
-                    nOutR = nSumR[nMaxIndex] / nCurMax;
-                    nOutG = nSumG[nMaxIndex] / nCurMax;
-                    nOutB = nSumB[nMaxIndex] / nCurMax;
+                    nOutR = (int)((float)nSumR[nMaxIndex] / (float)nCurMax);
+                    nOutG = (int)((float)nSumG[nMaxIndex] / (float)nCurMax);
+                    nOutB = (int)((float)nSumB[nMaxIndex] / (float)nCurMax);
 
-                    pbyDataOut_o[(nX) + (nY) * nBytesInARow] = GetClosestPaletteColorIndex(palette, Color.FromArgb(255, nOutR, nOutG, nOutB), paletteLength);
+                    output[nX + nY * width] = GetClosestPaletteColorIndex(palette, nOutR, nOutG, nOutB, paletteLength);
                 }
             }
 
-            byte GetClosestPaletteColorIndex(Color[] palette, Color target, byte count)
+            byte GetClosestPaletteColorIndex(byte[] palette, int r, int g, int b, byte count)
             {
-                var results = new double[count];
-                for (int i = 0; i < count; i++)
-                {
-                    var currentColor = palette[i];
-                    results[i] = Math.Sqrt(Math.Pow(currentColor.R - target.R, 2) + Math.Pow(currentColor.G - target.G, 2) + Math.Pow(currentColor.B - target.B, 2));
-                }
-
-                var min = double.MaxValue;
+                double minDist = 1000;
                 byte minIndex = 0;
                 for (byte i = 0; i < count; i++)
                 {
-                    if (results[i] < min)
+                    var distance = Math.Sqrt(Math.Pow(palette[i*3+0] - r, 2) + Math.Pow(palette[i*3+1] - g, 2) + Math.Pow(palette[i*3+2] - b, 2));
+                    if (distance < minDist)
                     {
-                        min = results[i];
+                        minDist = distance;
                         minIndex = i;
                     }
                 }
@@ -208,6 +215,9 @@ namespace Viewer
         [DllImport("GPUOperations.dll", EntryPoint = "Oilify")]
         static extern void OilifyImpl(int radius, float intensity, int width, int height, byte[] input, byte[] output, byte[] palette, byte paletteLength);
 
+        [DllImport("GPUOperations.dll")]
+        public static extern void Test(int x, int y, ref int result);
+
         void ExecuteImplUnmanaged(byte[] input,
                           int radius,
                           float intensity,
@@ -215,37 +225,50 @@ namespace Viewer
                           int height,
                           byte[] output, Color[] palette, byte paletteLength)
         {
-            byte[] charPalette = new byte[palette.Length * 3];
-            for(int i = 0; i< paletteLength; i++)
+            byte[] charPalette = new byte[paletteLength * 3];
+            for (int i = 0; i < paletteLength; i++)
             {
                 charPalette[i * 3 + 0] = (byte)palette[i].R;
                 charPalette[i * 3 + 1] = (byte)palette[i].G;
                 charPalette[i * 3 + 2] = (byte)palette[i].B;
             }
+            var sb = new System.Text.StringBuilder();
+            for(int i = 0; i< input.Length; i++)
+            {
+                sb.Append(input[i]);
+                sb.Append(", ");
+            }
+            sb.AppendLine();
+            sb.Append(radius);
+            sb.AppendLine();
+            sb.Append(intensity);
+            sb.AppendLine();
+            sb.Append(width);
+            sb.AppendLine();
+            sb.Append(height);
+            for (int i = 0; i < charPalette.Length; i++)
+            {
+                sb.Append(charPalette[i]);
+                sb.Append(", ");
+            }
+            Debug.WriteLine(sb.ToString());
             OilifyImpl(radius, intensity, width, height, input, output, charPalette, paletteLength);
         }
 
-        byte GetClosestPaletteColorIndex(Color[] palette, Color target, byte count)
+        byte GetClosestPaletteColorIndex(byte[] palette, byte r, byte g, byte b, byte count)
         {
-            var results = new double[count];
-            for (int i = 0; i < count; i++)
-            {
-                var currentColor = palette[i];
-                results[i] = Math.Sqrt(Math.Pow(currentColor.R - target.R, 2) + Math.Pow(currentColor.G - target.G, 2) + Math.Pow(currentColor.B - target.B, 2));
-            }
-
-            var min = double.MaxValue;
-            byte minIndex = 0;
+            double minDist = 100000;
+            byte index = 0;
             for (byte i = 0; i < count; i++)
             {
-                if (results[i] < min)
+                double distance = Math.Sqrt((Math.Pow(palette[i * 3 + 0] - r, 2) + Math.Pow(palette[i * 3 + 1] - g, 2) + Math.Pow(palette[i * 3 + 2] - b, 2)));
+                if (distance < minDist)
                 {
-                    min = results[i];
-                    minIndex = i;
+                    minDist = distance;
+                    index = i;
                 }
             }
-
-            return minIndex;
+            return index;
         }
     }
 

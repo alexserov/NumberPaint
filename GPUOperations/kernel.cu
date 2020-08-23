@@ -12,17 +12,8 @@ void __global__ addKernel(int *c, const int *a, const int *b)
     c[i] = a[i] + b[i];
 }
 
-/*
-* byte[] input,
-                          int radius,
-                          float intensity,
-                          int width,
-                          int height,
-                          byte[] output, Color[] palette, byte paletteLength
-*/
-
-__device__ char GetClosestPaletteColorIndex(char* palette, char r, char g, char b, char count) {
-    float minDist = 1000;
+__device__ char GetClosestPaletteColorIndex(const char* palette, int r, int g, int b, char count) {
+    float minDist = 100000;
     char index;
     for (char i = 0; i < count; i++) {
         float distance = sqrtf((powf(palette[i * 3 + 0] - r, 2) + powf(palette[i * 3 + 1] - g, 2) + powf(palette[i * 3 + 2] - b, 2)));
@@ -34,16 +25,23 @@ __device__ char GetClosestPaletteColorIndex(char* palette, char r, char g, char 
     return index;
 }
 
-void __global__ calculatePixel(char* input, char* output, char* palette, int width, int height, int radius, float intensity, char paletteLength) {
-    int index = threadIdx.x;
-    // Reset calculations of last pixel.
-    int* nIntensityCount = (int*)malloc(sizeof(int) * 256);
-    int* nSumR = (int*)malloc(sizeof(int) * 256);
-    int* nSumG = (int*)malloc(sizeof(int) * 256);
-    int* nSumB = (int*)malloc(sizeof(int) * 256);
-
+void __global__ calculatePixel(const char* input, char* output, const char* palette, const int width, const int height, const int radius, const float intensity, const char paletteLength) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
     int nY = index / width;
     int nX = index % width;
+    // Reset calculations of last pixel.
+    float nIntensityCount[256];
+    float nSumR[256];
+    float nSumG[256];
+    float nSumB[256];
+
+    for (int i = 0; i < 256; i++) {
+        nIntensityCount[i] = 0.0;
+        nSumR[i] = 0.0;
+        nSumG[i] = 0.0;
+        nSumB[i] = 0.0;
+    }
+    
 
     // Find intensities of nearest nRadius pixels in four direction.
     for (int nY_O = -radius; nY_O <= radius; nY_O++) {
@@ -55,12 +53,12 @@ void __global__ calculatePixel(char* input, char* output, char* palette, int wid
                 n = input[nX_S + nY_S * width];
             }
 
-            int nR = palette[n];
-            int nG = palette[n + 1];
-            int nB = palette[n + 2];
+            float nR = palette[n * 3 + 0];
+            float nG = palette[n * 3 + 1];
+            float nB = palette[n * 3 + 2];
 
             // Find intensity of RGB value and apply intensity level.
-            int nCurIntensity = (int)((((nR + nG + nB) / 3.0) * intensity) / 255);
+            float nCurIntensity = (int)((((float)(nR + nG + nB) / 3.0) * intensity) / 255.0);
             if (nCurIntensity > 255)
                 nCurIntensity = 255;
             int i = nCurIntensity;
@@ -85,16 +83,11 @@ void __global__ calculatePixel(char* input, char* output, char* palette, int wid
         }
     }
 
-    nOutR = nSumR[nMaxIndex] / nCurMax;
-    nOutG = nSumG[nMaxIndex] / nCurMax;
-    nOutB = nSumB[nMaxIndex] / nCurMax;
+    nOutR = (int)((float)nSumR[nMaxIndex] / (float)nCurMax);
+    nOutG = (int)((float)nSumG[nMaxIndex] / (float)nCurMax);
+    nOutB = (int)((float)nSumB[nMaxIndex] / (float)nCurMax);
 
     output[index] = GetClosestPaletteColorIndex(palette, nOutR, nOutG, nOutB, paletteLength);
-
-    free(&nIntensityCount);
-    free(&nSumR);
-    free(&nSumG);
-    free(&nSumB);
 }
 
 extern "C" __declspec(dllexport) void __stdcall Oilify(int radius, float intensity, int width, int height, char* input, char* output, char* palette, char paletteLength) {
@@ -111,125 +104,34 @@ extern "C" __declspec(dllexport) void __stdcall Oilify(int radius, float intensi
     cudaStatus = cudaMalloc(&devOutput, sizeof(char) * arraySize);
     cudaStatus = cudaMalloc(&devPalette, sizeof(char) * paletteLength * 3);
 
-    cudaMemcpy(devInput, input, arraySize, cudaMemcpyHostToDevice);
-    cudaMemcpy(devPalette, palette, paletteLength * 3, cudaMemcpyHostToDevice);
-
-    calculatePixel << <1, arraySize >> > (devInput, devOutput, devPalette, width, height, radius, intensity, paletteLength);
-
-    cudaStatus = cudaDeviceSynchronize();
-
-    cudaMemcpy(output, devOutput, arraySize, cudaMemcpyHostToDevice);
-
-    cudaFree(&devInput);
-    cudaFree(&devOutput);
-    cudaFree(&devPalette);
-}
-
-
-int main()
-{
-    const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
-
-    // Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
-        return 0;
-    }
-
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
-
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
-
-    return 0;
-}
-
-// Helper function for using CUDA to add vectors in parallel.
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
-{
-    int *dev_a = 0;
-    int *dev_b = 0;
-    int *dev_c = 0;
-    cudaError_t cudaStatus;
-
-    // Choose which GPU to run on, change this on a multi-GPU system.
-    cudaStatus = cudaSetDevice(0);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
-        goto Error;
-    }
-
-    // Allocate GPU buffers for three vectors (two input, one output)    .
-    cudaStatus = cudaMalloc((void**)&dev_c, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMalloc((void**)&dev_a, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMalloc((void**)&dev_b, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    // Copy input vectors from host memory to GPU buffers.
-    cudaStatus = cudaMemcpy(dev_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-    // Launch a kernel on the GPU with one thread for each element.
-    addKernel<<<1, size>>>(dev_c, dev_a, dev_b);
-
-    // Check for any errors launching the kernel
+    cudaStatus = cudaMemcpy(devInput, input, sizeof(char)*arraySize, cudaMemcpyHostToDevice);
+    cudaStatus = cudaMemcpy(devPalette, palette, sizeof(char) * paletteLength * 3, cudaMemcpyHostToDevice);    
+    int threadCount = 64;
+    calculatePixel << <width*height/threadCount, threadCount>> > (devInput, devOutput, devPalette, width, height, radius, intensity, paletteLength);
     cudaStatus = cudaGetLastError();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-        goto Error;
-    }
-    
-    // cudaDeviceSynchronize waits for the kernel to finish, and returns
-    // any errors encountered during the launch.
-    cudaStatus = cudaDeviceSynchronize();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-        goto Error;
-    }
+    cudaStatus = cudaDeviceSynchronize();    
+    cudaStatus = cudaMemcpy(output, devOutput, sizeof(char)*arraySize, cudaMemcpyDeviceToHost);
 
-    // Copy output vector from GPU buffer to host memory.
-    cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
+    cudaStatus = cudaFree(&devInput);
+    cudaStatus = cudaFree(&devOutput);
+    cudaStatus = cudaFree(&devPalette);
+}
 
-Error:
-    cudaFree(dev_c);
-    cudaFree(dev_a);
-    cudaFree(dev_b);
-    
-    return cudaStatus;
+
+void __global__ TestDevice(char a, char b, char* c) {
+#if __CUDA_ARCH__>=200
+    printf("test\n");
+#endif
+    *c = a + b;
+}
+
+extern "C" __declspec(dllexport) void __stdcall Test(char a, char b, char* c) {
+    char* cdev = nullptr;
+    cudaMalloc(&cdev, sizeof(char));
+
+    TestDevice << <1, 1 >> > (a, b, cdev);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(c, cdev, 1, cudaMemcpyDeviceToHost);
 }

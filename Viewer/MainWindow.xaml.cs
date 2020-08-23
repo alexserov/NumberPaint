@@ -16,6 +16,8 @@ namespace Viewer {
     /// </summary>
     public partial class MainWindow : Window {
         public MainWindow() {
+            var value = 0;
+            Viewer.Oilify.Test(2, 3, ref value);
             InitializeComponent();
 
         }
@@ -57,6 +59,7 @@ namespace Viewer {
             var rad = int.Parse(this.Oilify.Text);
             var small = int.Parse(this.Small.Text);
             var levels = int.Parse(this.Levels.Text);
+            var cudaOilify = cudaOilifyBox.IsChecked == true;
             this.Source.Source = null;
             this.Quantized.Source = null;
             this.Simplified.Source = null;
@@ -72,10 +75,15 @@ namespace Viewer {
                 var quantizer = new OctreeQuantizer(colorCount, maxBits);
                 return quantizer.Quantize(x.Result);
             }).ContinueWith(x => {
+                this.Source.Dispatcher.Invoke(() => {
+                    OutPalette.ItemsSource = x.Result.Palette.Entries.Select(x => new SolidColorBrush(System.Windows.Media.Color.FromRgb(x.R, x.G, x.B)));
+                });
+                return x.Result;
+            }).ContinueWith(x => {
                 this.Quantized.Dispatcher.Invoke(() => { this.Quantized.Source = FromBitmap(x.Result); });
                 return x.Result;
             }).ContinueWith(x => {
-                new Oilify().Execute(x.Result, out var OilifiedBitmap, rad, levels, colorCount);
+                new Oilify().Execute(x.Result, out var OilifiedBitmap, rad, levels, colorCount, cudaOilify);
                 return OilifiedBitmap;
             }).ContinueWith(x => {
                 this.Oilified.Dispatcher.Invoke(() => { this.Oilified.Source = FromBitmap(x.Result); });

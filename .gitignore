@@ -3,3 +3,6 @@
 .idea/
 .vs/
 **/x64
+**/debug
+*.user
+*.filters
