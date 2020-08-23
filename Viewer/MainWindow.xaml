@@ -7,79 +7,125 @@
         mc:Ignorable="d"
         WindowState="Maximized"
         Title="MainWindow" Height="450" Width="800">
-    <DockPanel LastChildFill="True">
-        <Grid DockPanel.Dock="Top">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-            <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\1.png"></TextBox>
-            <Button Grid.Column="1" Content="Execute" Click="ButtonBase_OnClick"/>
-        </Grid>
-        <Separator DockPanel.Dock="Top"/>
-        <DockPanel DockPanel.Dock="Bottom" LastChildFill="True">
-            <StackPanel DockPanel.Dock="Left">
-                <TextBlock Text="ColorCount:"/>
-                <TextBox x:Name="ColorsCount">16</TextBox>
-                <TextBlock Text="ColorCount:"/>
-                <TextBox x:Name="MaxBpp">8</TextBox>
-                <TextBlock Text="SmallBlock:"/>
-                <TextBox x:Name="Small">128</TextBox>
-                <TextBlock Text="CUDA Oilify:"/>
-                <CheckBox x:Name="cudaOilifyBox" IsChecked="True"></CheckBox>
-                <TextBlock Text="OilifyRadius:"/>
-                <TextBox x:Name="Oilify">1</TextBox>
-                <TextBlock Text="Levels:"/>
-                <TextBox x:Name="Levels">20</TextBox>
-            </StackPanel>
-            <Separator DockPanel.Dock="Left" HorizontalAlignment="Left"></Separator>
-            <Grid DockPanel.Dock="Right">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <DockPanel Grid.Column="0" Grid.Row="0" LastChildFill="True">
-                    <TextBlock Text="Source:" DockPanel.Dock="Top"/>
-                    <Image x:Name="Source" DockPanel.Dock="Bottom"/>
+    <TabControl>
+        <TabItem x:Name="main" Header="Main">
+            <DockPanel LastChildFill="True">
+                <Grid DockPanel.Dock="Top">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\3.png" Margin="5"></TextBox>
+                    <Button Grid.Column="1" Content="Execute" Click="ButtonBase_OnClick" IsDefault="True" Margin="5"/>
+                    <Button Grid.Column="2" Content="Cancel" Click="ButtonBase_OnClick2" IsDefault="True" Margin="5"/>
+                </Grid>
+                <Separator DockPanel.Dock="Top"/>
+                <DockPanel DockPanel.Dock="Bottom" LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Left">
+                        <GroupBox Header="Quantizer" Padding="5">
+                            <StackPanel>
+                                <TextBlock Text="ColorCount:"/>
+                                <TextBox x:Name="ColorsCount">16</TextBox>
+                                <TextBlock Text="Bpp:"/>
+                                <TextBox x:Name="MaxBpp">8</TextBox>
+                            </StackPanel>
+                        </GroupBox>
+                        <GroupBox Header="Oilify" Padding="5">
+                            <StackPanel>
+                                <TextBlock Text="CUDA:"/>
+                                <CheckBox x:Name="cudaOilifyBox" IsChecked="True"></CheckBox>
+                                <TextBlock Text="Radius:"/>
+                                <TextBox x:Name="Oilify">4</TextBox>
+                                <TextBlock Text="Levels:"/>
+                                <TextBox x:Name="Levels">20</TextBox>
+                            </StackPanel>
+                        </GroupBox>
+                        <GroupBox Header="Optimizer" Padding="5">
+                            <StackPanel>
+                                <TextBlock Text="SmallBlock:"/>
+                                <TextBox x:Name="Small">128</TextBox>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                    <Separator DockPanel.Dock="Left" HorizontalAlignment="Left" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="3,0"></Separator>
+                    <StackPanel DockPanel.Dock="Bottom">
+                        <ProgressBar/>
+                    </StackPanel>
+                    <Grid DockPanel.Dock="Right" ShowGridLines="True">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Column="0" Grid.Row="0" LastChildFill="True">
+                            <TextBlock Text="Source:" DockPanel.Dock="Top"/>
+                            <Image x:Name="Source" DockPanel.Dock="Bottom"/>
+                        </DockPanel>
+                        <DockPanel Grid.Column="0" Grid.Row="1" LastChildFill="True">
+                            <TextBlock Text="Quantized:" DockPanel.Dock="Top"/>
+                            <Image x:Name="Quantized" DockPanel.Dock="Bottom"/>
+                        </DockPanel>
+                        <DockPanel Grid.Column="1" Grid.Row="0" LastChildFill="True">
+                            <TextBlock Text="Oilified:" DockPanel.Dock="Top"/>
+                            <Image x:Name="Oilified" DockPanel.Dock="Bottom"/>
+                        </DockPanel>
+                        <DockPanel Grid.Column="1" Grid.Row="1" LastChildFill="True">
+                            <TextBlock Text="Simplified:" DockPanel.Dock="Top"/>
+                            <Image x:Name="Simplified" DockPanel.Dock="Bottom"/>
+                        </DockPanel>
+                        <DockPanel Grid.Column="2" Grid.Row="0" LastChildFill="True">
+                            <TextBlock Text="Map:" DockPanel.Dock="Top"/>
+                            <Image x:Name="Map" DockPanel.Dock="Bottom"/>
+                        </DockPanel>
+                        <DockPanel Grid.Column="2" Grid.Row="1" LastChildFill="True">
+                            <TextBlock Text="Palette:" DockPanel.Dock="Top"/>
+                            <ItemsControl x:Name="OutPalette">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="64" Height="64" Margin="2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DockPanel>
+                    </Grid>
                 </DockPanel>
-                <DockPanel Grid.Column="0" Grid.Row="1" LastChildFill="True">
-                    <TextBlock Text="Quantized:" DockPanel.Dock="Top"/>
-                    <Image x:Name="Quantized" DockPanel.Dock="Bottom"/>
-                </DockPanel>
-                <DockPanel Grid.Column="1" Grid.Row="0" LastChildFill="True">
-                    <TextBlock Text="Oilified:" DockPanel.Dock="Top"/>
-                    <Image x:Name="Oilified" DockPanel.Dock="Bottom"/>
-                </DockPanel>
-                <DockPanel Grid.Column="1" Grid.Row="1" LastChildFill="True">
-                    <TextBlock Text="Simplified:" DockPanel.Dock="Top"/>
-                    <Image x:Name="Simplified" DockPanel.Dock="Bottom"/>
-                </DockPanel>
-                <DockPanel Grid.Column="2" Grid.Row="0" LastChildFill="True">
-                    <TextBlock Text="Map:" DockPanel.Dock="Top"/>
-                    <Image x:Name="Map" DockPanel.Dock="Bottom"/>
-                </DockPanel>
-                <DockPanel Grid.Column="2" Grid.Row="1" LastChildFill="True">
-                    <TextBlock Text="Palette:" DockPanel.Dock="Top"/>
-                    <ItemsControl x:Name="OutPalette">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{Binding}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="64" Height="64" Margin="2"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </DockPanel>
-            </Grid>
-        </DockPanel>
-    </DockPanel>
+            </DockPanel>
+        </TabItem>
+        <TabItem Header="Source">
+            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                <Image Source="{Binding ElementName=Source, Path=Source}" Stretch="None"/>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Quantized">
+            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                <Image Source="{Binding ElementName=Quantized, Path=Source}" Stretch="None"/>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Oilified">
+            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                <Image Source="{Binding ElementName=Oilified, Path=Source}" Stretch="None"/>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Simplified">
+            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                <Image Source="{Binding ElementName=Simplified, Path=Source}" Stretch="None"/>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Map">
+            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                <Image Source="{Binding ElementName=Map, Path=Source}" Stretch="None"/>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
 </Window>

@@ -16,8 +16,6 @@ namespace Viewer {
     /// </summary>
     public partial class MainWindow : Window {
         public MainWindow() {
-            var value = 0;
-            //Viewer.Oilify.Test(2, 3, ref value);
             InitializeComponent();
 
         }
@@ -52,7 +50,10 @@ namespace Viewer {
             return result;
         }
 
-        void ButtonBase_OnClick(object sender, RoutedEventArgs e) {
+        void ButtonBase_OnClick2(object sender, RoutedEventArgs e)
+        {
+        }
+            void ButtonBase_OnClick(object sender, RoutedEventArgs e) {
             var colorCount = int.Parse(this.ColorsCount.Text);
             var maxBits = int.Parse(this.MaxBpp.Text);
             var fileName = this.source.Text;
@@ -76,7 +77,7 @@ namespace Viewer {
                 return quantizer.Quantize(x.Result);
             }).ContinueWith(x => {
                 this.Source.Dispatcher.Invoke(() => {
-                    OutPalette.ItemsSource = x.Result.Palette.Entries.Select(x => new SolidColorBrush(System.Windows.Media.Color.FromRgb(x.R, x.G, x.B)));
+                    OutPalette.ItemsSource = x.Result.Palette.Entries.Take(colorCount).Select(x => new SolidColorBrush(System.Windows.Media.Color.FromRgb(x.R, x.G, x.B)));
                 });
                 return x.Result;
             }).ContinueWith(x => {
@@ -97,6 +98,11 @@ namespace Viewer {
                     this.Map.Source = FromBitmap(x.Result.map);
                 });
             });
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 
