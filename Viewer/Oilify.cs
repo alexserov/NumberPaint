@@ -232,26 +232,26 @@ namespace Viewer
                 charPalette[i * 3 + 1] = (byte)palette[i].G;
                 charPalette[i * 3 + 2] = (byte)palette[i].B;
             }
-            var sb = new System.Text.StringBuilder();
-            for(int i = 0; i< input.Length; i++)
-            {
-                sb.Append(input[i]);
-                sb.Append(", ");
-            }
-            sb.AppendLine();
-            sb.Append(radius);
-            sb.AppendLine();
-            sb.Append(intensity);
-            sb.AppendLine();
-            sb.Append(width);
-            sb.AppendLine();
-            sb.Append(height);
-            for (int i = 0; i < charPalette.Length; i++)
-            {
-                sb.Append(charPalette[i]);
-                sb.Append(", ");
-            }
-            Debug.WriteLine(sb.ToString());
+            //var sb = new System.Text.StringBuilder();
+            //for(int i = 0; i< input.Length; i++)
+            //{
+            //    sb.Append(input[i]);
+            //    sb.Append(", ");
+            //}
+            //sb.AppendLine();
+            //sb.Append(radius);
+            //sb.AppendLine();
+            //sb.Append(intensity);
+            //sb.AppendLine();
+            //sb.Append(width);
+            //sb.AppendLine();
+            //sb.Append(height);
+            //for (int i = 0; i < charPalette.Length; i++)
+            //{
+            //    sb.Append(charPalette[i]);
+            //    sb.Append(", ");
+            //}
+            //Debug.WriteLine(sb.ToString());
             OilifyImpl(radius, intensity, width, height, input, output, charPalette, paletteLength);
         }
 

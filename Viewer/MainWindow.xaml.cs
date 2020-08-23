@@ -17,7 +17,7 @@ namespace Viewer {
     public partial class MainWindow : Window {
         public MainWindow() {
             var value = 0;
-            Viewer.Oilify.Test(2, 3, ref value);
+            //Viewer.Oilify.Test(2, 3, ref value);
             InitializeComponent();
 
         }

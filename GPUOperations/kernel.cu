@@ -12,10 +12,10 @@ void __global__ addKernel(int *c, const int *a, const int *b)
     c[i] = a[i] + b[i];
 }
 
-__device__ char GetClosestPaletteColorIndex(const char* palette, int r, int g, int b, char count) {
+__device__ unsigned char GetClosestPaletteColorIndex(const unsigned char* palette, int r, int g, int b, unsigned char count) {
     float minDist = 100000;
-    char index;
-    for (char i = 0; i < count; i++) {
+    unsigned char index;
+    for (unsigned char i = 0; i < count; i++) {
         float distance = sqrtf((powf(palette[i * 3 + 0] - r, 2) + powf(palette[i * 3 + 1] - g, 2) + powf(palette[i * 3 + 2] - b, 2)));
         if (distance < minDist) {
             minDist = distance;
@@ -25,7 +25,7 @@ __device__ char GetClosestPaletteColorIndex(const char* palette, int r, int g, i
     return index;
 }
 
-void __global__ calculatePixel(const char* input, char* output, const char* palette, const int width, const int height, const int radius, const float intensity, const char paletteLength) {
+void __global__ calculatePixel(const unsigned char* input, unsigned char* output, const unsigned char* palette, const int width, const int height, const int radius, const float intensity, const unsigned char paletteLength) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int nY = index / width;
     int nX = index % width;
@@ -58,7 +58,7 @@ void __global__ calculatePixel(const char* input, char* output, const char* pale
             float nB = palette[n * 3 + 2];
 
             // Find intensity of RGB value and apply intensity level.
-            float nCurIntensity = (int)((((float)(nR + nG + nB) / 3.0) * intensity) / 255.0);
+            float nCurIntensity = ((((float)(nR + nG + nB) / 3.0) * intensity) / 255.0);
             if (nCurIntensity > 255)
                 nCurIntensity = 255;
             int i = nCurIntensity;
@@ -90,27 +90,27 @@ void __global__ calculatePixel(const char* input, char* output, const char* pale
     output[index] = GetClosestPaletteColorIndex(palette, nOutR, nOutG, nOutB, paletteLength);
 }
 
-extern "C" __declspec(dllexport) void __stdcall Oilify(int radius, float intensity, int width, int height, char* input, char* output, char* palette, char paletteLength) {
-    char* devInput = nullptr;
-    char* devOutput = nullptr;
-    char* devPalette = nullptr;
+extern "C" __declspec(dllexport) void __stdcall Oilify(int radius, float intensity, int width, int height,unsigned char* input, unsigned char* output, unsigned char* palette, unsigned char paletteLength) {
+    unsigned char* devInput = nullptr;
+    unsigned char* devOutput = nullptr;
+    unsigned char* devPalette = nullptr;
 
     cudaError_t cudaStatus;
     cudaStatus = cudaSetDevice(0);
 
     auto arraySize = width * height;
 
-    cudaStatus = cudaMalloc(&devInput, sizeof(char) * arraySize);
-    cudaStatus = cudaMalloc(&devOutput, sizeof(char) * arraySize);
-    cudaStatus = cudaMalloc(&devPalette, sizeof(char) * paletteLength * 3);
+    cudaStatus = cudaMalloc(&devInput, sizeof(unsigned char) * arraySize);
+    cudaStatus = cudaMalloc(&devOutput, sizeof(unsigned char) * arraySize);
+    cudaStatus = cudaMalloc(&devPalette, sizeof(unsigned char) * paletteLength * 3);
 
-    cudaStatus = cudaMemcpy(devInput, input, sizeof(char)*arraySize, cudaMemcpyHostToDevice);
-    cudaStatus = cudaMemcpy(devPalette, palette, sizeof(char) * paletteLength * 3, cudaMemcpyHostToDevice);    
-    int threadCount = 64;
+    cudaStatus = cudaMemcpy(devInput, input, sizeof(unsigned char)*arraySize, cudaMemcpyHostToDevice);
+    cudaStatus = cudaMemcpy(devPalette, palette, sizeof(unsigned char) * paletteLength * 3, cudaMemcpyHostToDevice);    
+    int threadCount = 16;
     calculatePixel << <width*height/threadCount, threadCount>> > (devInput, devOutput, devPalette, width, height, radius, intensity, paletteLength);
     cudaStatus = cudaGetLastError();
     cudaStatus = cudaDeviceSynchronize();    
-    cudaStatus = cudaMemcpy(output, devOutput, sizeof(char)*arraySize, cudaMemcpyDeviceToHost);
+    cudaStatus = cudaMemcpy(output, devOutput, sizeof(unsigned char)*arraySize, cudaMemcpyDeviceToHost);
 
     cudaStatus = cudaFree(&devInput);
     cudaStatus = cudaFree(&devOutput);
@@ -118,16 +118,16 @@ extern "C" __declspec(dllexport) void __stdcall Oilify(int radius, float intensi
 }
 
 
-void __global__ TestDevice(char a, char b, char* c) {
+void __global__ TestDevice(unsigned char a, unsigned char b, unsigned char* c) {
 #if __CUDA_ARCH__>=200
     printf("test\n");
 #endif
     *c = a + b;
 }
 
-extern "C" __declspec(dllexport) void __stdcall Test(char a, char b, char* c) {
-    char* cdev = nullptr;
-    cudaMalloc(&cdev, sizeof(char));
+extern "C" __declspec(dllexport) void __stdcall Test(unsigned char a, unsigned char b, unsigned char* c) {
+    unsigned char* cdev = nullptr;
+    cudaMalloc(&cdev, sizeof(unsigned char));
 
     TestDevice << <1, 1 >> > (a, b, cdev);
 
