@@ -18,8 +18,8 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\3.png" Margin="5"></TextBox>
-                    <Button Grid.Column="1" Content="Execute" Click="ButtonBase_OnClick" IsDefault="True" Margin="5"/>
-                    <Button Grid.Column="2" Content="Cancel" Click="ButtonBase_OnClick2" IsDefault="True" Margin="5"/>
+                    <Button Grid.Column="1" x:Name="executeButton" Content="Execute" Click="ButtonBase_OnClick" IsDefault="True" Margin="5"/>
+                    <Button Grid.Column="2" x:Name="cancelButton" IsEnabled="False" Content="Cancel" Click="ButtonBase_OnClick2" IsDefault="True" Margin="5"/>
                 </Grid>
                 <Separator DockPanel.Dock="Top"/>
                 <DockPanel DockPanel.Dock="Bottom" LastChildFill="True">

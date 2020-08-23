@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -49,11 +50,17 @@ namespace Viewer {
 
             return result;
         }
-
+        CancellationTokenSource cancellationTokenSource;
         void ButtonBase_OnClick2(object sender, RoutedEventArgs e)
         {
+            cancellationTokenSource.Cancel();
+            executeButton.IsEnabled = true;
+            cancelButton.IsEnabled = false;
         }
             void ButtonBase_OnClick(object sender, RoutedEventArgs e) {
+            executeButton.IsEnabled = false;
+            cancelButton.IsEnabled = true;
+            cancellationTokenSource = new CancellationTokenSource();
             var colorCount = int.Parse(this.ColorsCount.Text);
             var maxBits = int.Parse(this.MaxBpp.Text);
             var fileName = this.source.Text;
@@ -69,7 +76,7 @@ namespace Viewer {
             Task.Run(() => {
                 using var imageStream = new FileStream(fileName, FileMode.Open);
                 return new System.Drawing.Bitmap(imageStream);
-            }).ContinueWith(x => {
+            }, cancellationTokenSource.Token).ContinueWith(x => {
                 this.Source.Dispatcher.Invoke(() => { this.Source.Source = FromBitmap(x.Result); });
                 return x.Result;
             }).ContinueWith(x => {
@@ -96,6 +103,8 @@ namespace Viewer {
                 this.Oilified.Dispatcher.Invoke(() => {
                     this.Simplified.Source = FromBitmap(x.Result.reduced);
                     this.Map.Source = FromBitmap(x.Result.map);
+                    executeButton.IsEnabled = true;
+                    cancelButton.IsEnabled = false;
                 });
             });
         }
