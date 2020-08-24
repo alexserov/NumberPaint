@@ -1,16 +1,16 @@
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
+#include "sm_60_atomic_functions.h"
 
 #include <stdio.h>
 
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
-
-void __global__ addKernel(int *c, const int *a, const int *b)
-{
-    int i = threadIdx.x;
-    c[i] = a[i] + b[i];
-}
+//#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
+//__device__ double atomicAdd(double* a, double b) { return b; }
+//__device__ unsigned long atomicAdd(unsigned long* a, unsigned long b) { return b; }
+//__device__ unsigned long long atomicAdd(unsigned long long* a, unsigned long long b) { return b; }
+//#else
+//#endif
 
 __device__ unsigned char GetClosestPaletteColorIndex(const unsigned char* palette, int r, int g, int b, unsigned char count) {
     float minDist = 100000;
@@ -109,7 +109,7 @@ extern "C" __declspec(dllexport) void __stdcall Oilify(int radius, float intensi
     int threadCount = 16;
     calculatePixel << <width*height/threadCount, threadCount>> > (devInput, devOutput, devPalette, width, height, radius, intensity, paletteLength);
     cudaStatus = cudaGetLastError();
-    cudaStatus = cudaDeviceSynchronize();    
+    cudaStatus = cudaDeviceSynchronize();     
     cudaStatus = cudaMemcpy(output, devOutput, sizeof(unsigned char)*arraySize, cudaMemcpyDeviceToHost);
 
     cudaStatus = cudaFree(&devInput);
@@ -118,20 +118,93 @@ extern "C" __declspec(dllexport) void __stdcall Oilify(int radius, float intensi
 }
 
 
-void __global__ TestDevice(unsigned char a, unsigned char b, unsigned char* c) {
-#if __CUDA_ARCH__>=200
-    printf("test\n");
-#endif
-    *c = a + b;
+__device__ unsigned long int processHeatMap_iteration;
+__device__ unsigned long long int processHeatMap_count;
+__device__ unsigned int processHeatMap_width;
+__device__ unsigned int processHeatMap_height;
+void __global__ processHeatMap(const unsigned char* data, unsigned long int* inputMap, unsigned long int* outputMap) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int width = processHeatMap_width;
+    unsigned int height = processHeatMap_height;
+    int y = index / width;
+    int x = index % width;
+
+    unsigned char dataValue = data[index];
+    unsigned long int mapValue = inputMap[index];
+    bool success = true;
+    for (int i = -1; i <= 1; i++) {
+        if (!success)
+            break;
+        for (int j = -1; j <= 1; j++) {
+            int yN = y + i;
+            int xN = x + j;
+            int indexN = xN + yN * width;
+            if (yN < 0 || xN < 0 || yN >= height || xN >= width) {
+                success = false;
+                break;
+            }                
+            if (data[indexN] != dataValue || inputMap[indexN]!=processHeatMap_iteration) {
+                success = false;
+                break;
+            }
+        }
+    }
+    if (success) {
+        outputMap[index] = mapValue + 1;
+        atomicAdd(&processHeatMap_count, 1);
+    }    
 }
 
-extern "C" __declspec(dllexport) void __stdcall Test(unsigned char a, unsigned char b, unsigned char* c) {
-    unsigned char* cdev = nullptr;
-    cudaMalloc(&cdev, sizeof(unsigned char));
+extern "C" __declspec(dllexport) void __stdcall BuildHeatMap(const unsigned char* data, unsigned long int* heatMap, unsigned int width, unsigned int height, unsigned long int* levels) {
+    cudaError_t cudaStatus;
+    cudaStatus = cudaSetDevice(0);
 
-    TestDevice << <1, 1 >> > (a, b, cdev);
+    unsigned char* dataDev = nullptr;
+    unsigned  long int* inputHeatMapDev = nullptr;
+    unsigned  long int* outputHeatMapDev = nullptr;
+    unsigned long long int countHost;
+    int size = width * height;
+    unsigned long int iteration = 0;
 
-    cudaDeviceSynchronize();
+    //symbols    
+    unsigned long int* iterationDev = nullptr;
+    unsigned long long int* countDev = nullptr;
+    unsigned int* widthDev = nullptr;
+    unsigned int* heightDev = nullptr;
 
-    cudaMemcpy(c, cdev, 1, cudaMemcpyDeviceToHost);
+    cudaStatus = cudaGetSymbolAddress((void**)&iterationDev, processHeatMap_iteration);
+    cudaStatus = cudaGetSymbolAddress((void**)&countDev, processHeatMap_count);
+    cudaStatus = cudaGetSymbolAddress((void**)&widthDev, processHeatMap_width);
+    cudaStatus = cudaGetSymbolAddress((void**)&heightDev, processHeatMap_height);
+
+    //arrays
+    memset(heatMap, 0, size * sizeof(unsigned long int));
+
+    cudaStatus = cudaMalloc(&dataDev, size);
+    cudaStatus = cudaMalloc(&inputHeatMapDev, size * sizeof(unsigned long int));
+    cudaStatus = cudaMalloc(&outputHeatMapDev, size * sizeof(unsigned long int));
+    
+    
+    cudaStatus = cudaMemcpy(dataDev, data, size, cudaMemcpyHostToDevice);    
+    cudaStatus = cudaMemcpy(outputHeatMapDev, heatMap, size * sizeof(unsigned long int), cudaMemcpyHostToDevice);
+    
+    //values        
+    cudaStatus = cudaMemcpy(widthDev, &width, sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaStatus = cudaMemcpy(heightDev, &height, sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaStatus = cudaMemset(iterationDev, 0, sizeof(unsigned long int));
+    
+    do {
+        countHost = 0;
+        cudaStatus = cudaMemcpy(iterationDev, &iteration, sizeof(unsigned long int), cudaMemcpyHostToDevice);
+        cudaStatus = cudaMemcpy(inputHeatMapDev, outputHeatMapDev, size * sizeof(unsigned long int), cudaMemcpyDeviceToDevice);
+        cudaStatus = cudaMemset(countDev, 0, sizeof(unsigned long int));
+        int threadCount = 16;
+        processHeatMap << <size / threadCount, threadCount >> > (dataDev, inputHeatMapDev, outputHeatMapDev);
+        cudaStatus = cudaGetLastError();
+        cudaStatus = cudaDeviceSynchronize();
+        cudaMemcpy(&countHost, countDev, sizeof(unsigned long int), cudaMemcpyDeviceToHost);
+        iteration++;
+    } while (countHost != 0);
+    cudaMemcpy(heatMap, outputHeatMapDev, size*sizeof(unsigned long int), cudaMemcpyDeviceToHost);
+    *levels = iteration - 1;
 }

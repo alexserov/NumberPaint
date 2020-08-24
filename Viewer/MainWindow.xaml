@@ -127,5 +127,13 @@
                 <Image Source="{Binding ElementName=Map, Path=Source}" Stretch="None"/>
             </ScrollViewer>
         </TabItem>
+        <TabItem Header="HeatMap">
+            <DockPanel LastChildFill="True">
+                <Button Content="Build" HorizontalAlignment="Center"/>
+                <ScrollViewer DockPanel.Dock="Bottom" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                    <Image x:Name="heatMap" Stretch="None"/>
+                </ScrollViewer>
+            </DockPanel>
+        </TabItem>
     </TabControl>
 </Window>

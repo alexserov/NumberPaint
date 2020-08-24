@@ -11,23 +11,28 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using PixelFormat = System.Windows.Media.PixelFormat;
 
-namespace Viewer {
+namespace Viewer
+{
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window {
-        public MainWindow() {
+    public partial class MainWindow : Window
+    {
+        public MainWindow()
+        {
             InitializeComponent();
 
         }
 
-        unsafe ImageSource FromBitmap(Bitmap source) {
+        unsafe ImageSource FromBitmap(Bitmap source)
+        {
             var pf = PixelFormats.Bgra32;
-            switch (source.PixelFormat) {
+            switch (source.PixelFormat)
+            {
                 case System.Drawing.Imaging.PixelFormat.Format8bppIndexed:
                     pf = PixelFormats.Indexed8;
                     break;
-                case  System.Drawing.Imaging.PixelFormat.Format24bppRgb:
+                case System.Drawing.Imaging.PixelFormat.Format24bppRgb:
                     pf = PixelFormats.Bgr24;
                     break;
                 case System.Drawing.Imaging.PixelFormat.Format32bppArgb:
@@ -37,7 +42,8 @@ namespace Viewer {
                     throw new ArgumentOutOfRangeException();
             }
             BitmapPalette palette = null;
-            if (source.PixelFormat == System.Drawing.Imaging.PixelFormat.Format8bppIndexed) {
+            if (source.PixelFormat == System.Drawing.Imaging.PixelFormat.Format8bppIndexed)
+            {
                 pf = PixelFormats.Indexed8;
                 palette = new BitmapPalette(source.Palette.Entries.Select(x => System.Windows.Media.Color.FromArgb(x.A, x.R, x.G, x.B)).ToList());
             }
@@ -57,7 +63,16 @@ namespace Viewer {
             executeButton.IsEnabled = true;
             cancelButton.IsEnabled = false;
         }
-            void ButtonBase_OnClick(object sender, RoutedEventArgs e) {
+        void BuildTaskChain()
+        {
+
+        }
+        enum TaskName
+        {
+
+        }
+        void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        {
             executeButton.IsEnabled = false;
             cancelButton.IsEnabled = true;
             cancellationTokenSource = new CancellationTokenSource();
@@ -73,34 +88,45 @@ namespace Viewer {
             this.Simplified.Source = null;
             this.Oilified.Source = null;
             this.Map.Source = null;
-            Task.Run(() => {
+            Task.Run(() =>
+            {
                 using var imageStream = new FileStream(fileName, FileMode.Open);
                 return new System.Drawing.Bitmap(imageStream);
-            }, cancellationTokenSource.Token).ContinueWith(x => {
+            }, cancellationTokenSource.Token).ContinueWith(x =>
+            {
                 this.Source.Dispatcher.Invoke(() => { this.Source.Source = FromBitmap(x.Result); });
                 return x.Result;
-            }).ContinueWith(x => {
+            }).ContinueWith(x =>
+            {
                 var quantizer = new OctreeQuantizer(colorCount, maxBits);
                 return quantizer.Quantize(x.Result);
-            }).ContinueWith(x => {
-                this.Source.Dispatcher.Invoke(() => {
+            }).ContinueWith(x =>
+            {
+                this.Source.Dispatcher.Invoke(() =>
+                {
                     OutPalette.ItemsSource = x.Result.Palette.Entries.Take(colorCount).Select(x => new SolidColorBrush(System.Windows.Media.Color.FromRgb(x.R, x.G, x.B)));
                 });
                 return x.Result;
-            }).ContinueWith(x => {
+            }).ContinueWith(x =>
+            {
                 this.Quantized.Dispatcher.Invoke(() => { this.Quantized.Source = FromBitmap(x.Result); });
                 return x.Result;
-            }).ContinueWith(x => {
+            }).ContinueWith(x =>
+            {
                 new Oilify().Execute(x.Result, out var OilifiedBitmap, rad, levels, colorCount, cudaOilify);
                 return OilifiedBitmap;
-            }).ContinueWith(x => {
+            }).ContinueWith(x =>
+            {
                 this.Oilified.Dispatcher.Invoke(() => { this.Oilified.Source = FromBitmap(x.Result); });
                 return x.Result;
-            }).ContinueWith(x => {
+            }).ContinueWith(x =>
+            {
                 RegionWorker.Process(small, x.Result, out var reduced, out var map);
-                return new {reduced = reduced, map = map};
-            }).ContinueWith(x => {
-                this.Oilified.Dispatcher.Invoke(() => {
+                return (reduced: reduced, map: map);
+            }).ContinueWith(x =>
+            {
+                this.Oilified.Dispatcher.Invoke(() =>
+                {
                     this.Simplified.Source = FromBitmap(x.Result.reduced);
                     this.Map.Source = FromBitmap(x.Result.map);
                     executeButton.IsEnabled = true;
