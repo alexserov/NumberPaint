@@ -46,6 +46,8 @@ void __global__ calculatePixel(const unsigned char* input, unsigned char* output
     // Find intensities of nearest nRadius pixels in four direction.
     for (int nY_O = -radius; nY_O <= radius; nY_O++) {
         for (int nX_O = -radius; nX_O <= radius; nX_O++) {
+            if (sqrtf(nY_O * nY_O + nX_O * nX_O) > radius)
+                continue;
             int nY_S = nY + nY_O;
             int nX_S = nX + nX_O;
             int n = input[nX + nY * width];

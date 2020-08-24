@@ -10,6 +10,14 @@ using Microsoft.SqlServer.Server;
 
 namespace Viewer {
     internal class RegionWorker {
+        public static Bitmap GetRegions(Bitmap source, int small)
+        {
+            return null;
+        }
+        public static Bitmap GetMap(Bitmap regions)
+        {
+            return null;
+        }
         public static void Process(int small, Bitmap source, out Bitmap reduced, out Bitmap map) {
             source = (Bitmap) source.Clone();
             reduced = (Bitmap)source.Clone();

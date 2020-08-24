@@ -129,7 +129,7 @@
         </TabItem>
         <TabItem Header="HeatMap">
             <DockPanel LastChildFill="True">
-                <Button Content="Build" HorizontalAlignment="Center"/>
+                <Button Content="Build" HorizontalAlignment="Center" Click="Button_Click_1"/>
                 <ScrollViewer DockPanel.Dock="Bottom" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
                     <Image x:Name="heatMap" Stretch="None"/>
                 </ScrollViewer>

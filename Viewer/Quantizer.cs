@@ -180,7 +180,7 @@ namespace Viewer
             {
                 // Set the source pixel to the first pixel in this row
                 pSourcePixel = (Int32*)pSourceRow;
-
+                
                 // And loop through each column
                 for (int col = 0; col < width; col++, pSourcePixel++)
                     // Now I have the pixel, call the FirstPassQuantize function...

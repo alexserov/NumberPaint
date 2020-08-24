@@ -8,7 +8,7 @@ namespace Viewer
 {
     public class HeatMap
     {
-        [DllImport("GPUOperations.dll"]
+        [DllImport("GPUOperations.dll")]
         static extern void BuildHeatMap(byte[] data, UInt32[] heatMap, int width, int height, ref UInt32 levels);
 
         public static (UInt32[] map,UInt32 levels) Build(Bitmap source)
