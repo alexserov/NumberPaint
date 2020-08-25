@@ -12,11 +12,25 @@ namespace Viewer {
     public interface IImageOperation : INotifyPropertyChanged {
         string Header { get; }
         object Result { get; }
+        EditorKeys Editor { get; }
     }
-    public class ImageOperations<TKey> {
+    public enum ImageOperationName {
+        Unused,
+        Open,
+        Quantize,
+        Palette,
+        Oilify,
+        Simplify,
+        Map,
+    }
+    public enum EditorKeys {
+        Image,
+        Palette
+    }
+    public class ImageOperations {
         public IEnumerable<IImageOperation> OperationsSource { get { return operations; } }
         List<ImageOperation> operations = new List<ImageOperation>();
-        Dictionary<TKey, ImageOperation> operationsMap = new Dictionary<TKey, ImageOperation>();
+        Dictionary<ImageOperationName, ImageOperation> operationsMap = new Dictionary<ImageOperationName, ImageOperation>();
         static readonly object synchronized = new object();
         readonly CancellationTokenSource tokenSource = new CancellationTokenSource();
         private readonly Dispatcher uiDispatcher;
@@ -49,30 +63,43 @@ namespace Viewer {
                 op.Result = result;
             }
         }
-        public object GetResult(TKey key) {
+        public object GetResult(ImageOperationName key) {
             lock (synchronized) {
                 return operationsMap[key].Result;
             }
         }
-        public object this[TKey key] => GetResult(key);
-        public ImageOperations<TKey> Register<TValueIn>(TKey key, Func<ImageOperations<TKey>, TValueIn, object> operation) {
+        public object this[ImageOperationName key] => GetResult(key);
+        public ImageOperations Register<TValueIn>(EditorKeys editor, ImageOperationName key, Func<ImageOperations, TValueIn, object> operation) {
             var index = operations.Count - 1;
-            operations.Add(new ImageOperation(uiDispatcher) { Task = x => operation(x, index == -1 ? default(TValueIn) : (TValueIn)x.operations[index].Result), Key = key });
+            var op =
+            new ImageOperation(uiDispatcher, editor) {
+                Task = x => {
+                    TValueIn previous = default;
+                    if (index != -1) {
+                        var prevResult = x.operations[index].Result;
+                        if (prevResult is TValueIn)
+                            previous = (TValueIn)prevResult;
+                    }
+                    return operation(x, previous);
+                }, Key = key
+            };
+            operations.Add(op);
+            operationsMap[key] = op;
             return this;
         }
-        public ImageOperations<TKey> StopOnce(TKey key) {
+        public ImageOperations StopOnce(ImageOperationName key) {
             operationsMap[key].StopOnce();
             return this;
         }
-        public ImageOperations<TKey> Stop(TKey key) {
+        public ImageOperations Stop(ImageOperationName key) {
             operationsMap[key].Stop();
             return this;
         }
-        public ImageOperations<TKey> Start(TKey key) {
+        public ImageOperations Start(ImageOperationName key) {
             operationsMap[key].Start();
             return this;
         }
-        public ImageOperations<TKey> ExecuteFrom(TKey key) {
+        public ImageOperations ExecuteFrom(ImageOperationName key) {
             for (int i = 0; i < operations.Count; i++) {
                 var current = operations[i];
                 if (Equals(current.Key, key))
@@ -92,8 +119,8 @@ namespace Viewer {
             }
         }
         public class ImageOperation : IImageOperation {
-            public Func<ImageOperations<TKey>, object> Task { get; set; }
-            public TKey Key { get; set; }
+            public Func<ImageOperations, object> Task { get; set; }
+            public ImageOperationName Key { get; set; }
             public object Result {
                 get => result; set {
                     if (Equals(result, value))
@@ -106,8 +133,9 @@ namespace Viewer {
             bool once;
             private Dispatcher uiDispatcher;
 
-            public ImageOperation(Dispatcher uiDispatcher) {
+            public ImageOperation(Dispatcher uiDispatcher, EditorKeys editor) {
                 this.uiDispatcher = uiDispatcher;
+                Editor = editor;
             }
 
             internal void Start() {
@@ -132,7 +160,9 @@ namespace Viewer {
             }
 
             public string Header => Key.ToString();
-            
+
+            public EditorKeys Editor { get; }
+
             PropertyChangedEventHandler propertyChanged = (_, __) => { };
             private object result;
 

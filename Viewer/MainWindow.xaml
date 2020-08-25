@@ -61,14 +61,37 @@
                                 <ui:FixedLineWrapPanel LineCount="2"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <DockPanel LastChildFill="True">
-                                    <TextBlock Text="{Binding Header}" DockPanel.Dock="Top"/>
-                                    <Image Source="{Binding Result, Converter={ui:BitmapToImageSourceConverter}}" DockPanel.Dock="Bottom"/>
-                                </DockPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplateSelector>
+                            <ui:OperationEditorSelector>
+                                <ui:OperationEditorSelector.ImageTemplate>
+                                    <DataTemplate>
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock Text="{Binding Header}" DockPanel.Dock="Top"/>
+                                            <Image Source="{Binding Result, Converter={ui:BitmapToImageSourceConverter}}" DockPanel.Dock="Bottom"/>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ui:OperationEditorSelector.ImageTemplate>
+                                <ui:OperationEditorSelector.PaletteTemplate>
+                                    <DataTemplate>
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock Text="{Binding Header}" DockPanel.Dock="Top"/>
+                                            <ItemsControl ItemsSource="{Binding Result}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <ui:FixedLineWrapPanel Square="True"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="{Binding}" Margin="5"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ui:OperationEditorSelector.PaletteTemplate>
+                            </ui:OperationEditorSelector>
+                        </ItemsControl.ItemTemplateSelector>
                     </ItemsControl>
                 </DockPanel>
             </DockPanel>

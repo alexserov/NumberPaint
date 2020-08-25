@@ -18,47 +18,38 @@ namespace Viewer
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
-    {
-        public enum ImageOperationName
-        {
-            Unused,
-            OpenFile,
-            Quantize,
-            SetQuantizedPalette,
-            Oilify,
-            GetSimplified,
-            GetMap,
-        }
-        ImageOperations<ImageOperationName> operations;
+    {        
+        
+        ImageOperations operations;
         public MainWindow() {
             DataContext = this;
-            Operations = new ImageOperations<ImageOperationName>(Dispatcher);            
-            Operations.Register<Bitmap>(ImageOperationName.OpenFile, (operations, previous) => {
+            Operations = new ImageOperations(Dispatcher);            
+            Operations.Register<Bitmap>(EditorKeys.Image, ImageOperationName.Open, (operations, previous) => {
                 var fileName = Dispatcher.Invoke(() => this.source.Text);
                 using var imageStream = new FileStream(fileName, FileMode.Open);
                 return new System.Drawing.Bitmap(imageStream);
-            }).Register<Bitmap>(ImageOperationName.Quantize, (operations, previous) => {
+            }).Register<Bitmap>(EditorKeys.Image, ImageOperationName.Quantize, (operations, previous) => {
                 var colorCount = Dispatcher.Invoke(() => int.Parse(this.ColorsCount.Text));
                 var maxBits = Dispatcher.Invoke(() => int.Parse(this.MaxBpp.Text));
                 var quantizer = new OctreeQuantizer(colorCount, maxBits);
                 return quantizer.Quantize(previous);
-            }).Register<Bitmap>(ImageOperationName.SetQuantizedPalette, (operations, previous) => {
-                //Dispatcher.Invoke(() => {
-                //    var colorCount = int.Parse(this.ColorsCount.Text);
-                //    OutPalette.ItemsSource = previous.Palette.Entries.Take(colorCount).Select(x => new SolidColorBrush(System.Windows.Media.Color.FromRgb(x.R, x.G, x.B)));
-                //});
-                return previous;
-            }).Register<Bitmap>(ImageOperationName.Oilify, (operations, previous) => {
+            }).Register<Bitmap>(EditorKeys.Palette, ImageOperationName.Palette, (operations, previous) => {
+                return Dispatcher.Invoke(() => {
+                    var colorCount = int.Parse(this.ColorsCount.Text);
+                    return previous.Palette.Entries.Take(colorCount).Select(x => new SolidColorBrush(System.Windows.Media.Color.FromRgb(x.R, x.G, x.B)));
+                });
+            }).Register<Bitmap>(EditorKeys.Image, ImageOperationName.Oilify, (operations, previous) => {
+                previous = (Bitmap)operations[ImageOperationName.Quantize];
                 var rad = Dispatcher.Invoke(() => int.Parse(this.Oilify.Text));
                 var levels = Dispatcher.Invoke(() => int.Parse(this.Levels.Text));
                 var cudaOilify = Dispatcher.Invoke(() => cudaOilifyBox.IsChecked == true);
                 var colorCount = Dispatcher.Invoke(() => int.Parse(this.ColorsCount.Text));
                 new Oilify().Execute(previous, out var OilifiedBitmap, rad, levels, colorCount, cudaOilify);
                 return OilifiedBitmap;
-            }).Register<Bitmap>(ImageOperationName.GetSimplified, (operations, previous) => {
+            }).Register<Bitmap>(EditorKeys.Image, ImageOperationName.Simplify, (operations, previous) => {
                 var small = Dispatcher.Invoke(() => int.Parse(this.Small.Text));
                 return RegionWorker.GetRegions(previous, small);
-            }).Register<Bitmap>(ImageOperationName.GetMap, (operations, previous) => {
+            }).Register<Bitmap>(EditorKeys.Image, ImageOperationName.Map, (operations, previous) => {
                 return RegionWorker.GetMap(previous);
             })
             ;
@@ -71,7 +62,7 @@ namespace Viewer
         }
         CancellationTokenSource cancellationTokenSource;
 
-        public ImageOperations<ImageOperationName> Operations { get => operations; set => operations = value; }
+        public ImageOperations Operations { get => operations; set => operations = value; }
 
         void ButtonBase_OnClick2(object sender, RoutedEventArgs e)
         {
