@@ -12,27 +12,16 @@ namespace Viewer {
     internal class RegionWorker {
         public static Bitmap GetRegions(Bitmap source, int small)
         {
-            return null;
-        }
-        public static Bitmap GetMap(Bitmap regions)
-        {
-            return null;
-        }
-        public static void Process(int small, Bitmap source, out Bitmap reduced, out Bitmap map) {
-            source = (Bitmap) source.Clone();
-            reduced = (Bitmap)source.Clone();
-            map = new Bitmap(source.Width, source.Height, PixelFormat.Format8bppIndexed);
-            var palette = map.Palette;
-            palette.Entries[0] = Color.Black;
-            palette.Entries[1] = Color.White;
-            palette.Entries[2] = Color.FromArgb(0, 0, 0, 0);
-            map.Palette = palette;
+            source = (Bitmap)source.Clone();
+            var reduced = (Bitmap)source.Clone();
             var lb = new LockBitmap(source);
             lb.LockBits();
-            var bi = new BI {H = (ushort)source.Height, pixels = new PI[source.Width, source.Height], W = (ushort)source.Width};
+            var bi = new BI { H = (ushort)source.Height, pixels = new PI[source.Width, source.Height], W = (ushort)source.Width };
             int totalColors = source.Palette.Entries.Length;
-            for (int i = 0; i < source.Width; i++) {
-                for (int j = 0; j < source.Height; j++) {
+            for (int i = 0; i < source.Width; i++)
+            {
+                for (int j = 0; j < source.Height; j++)
+                {
                     var color = lb.GetPixel(i, j);
                     bi.pixels[i, j] = new PI(i, j, color);
                 }
@@ -45,25 +34,32 @@ namespace Viewer {
             Console.WriteLine($"{totalColors} colors found");
             bi.segmentMap = new int[source.Width, source.Height];
             List<SI> segments = new List<SI>();
-            for (int i = 0; i < source.Width; i++) {
-                for (int j = 0; j < source.Height; j++) {
+            for (int i = 0; i < source.Width; i++)
+            {
+                for (int j = 0; j < source.Height; j++)
+                {
                     var segmentIndex = bi.segmentMap[i, j];
-                    if (segmentIndex == default) {
-                        segmentIndex = segments.Count+1;
+                    if (segmentIndex == default)
+                    {
+                        segmentIndex = segments.Count + 1;
                         Stack<PI> st = new Stack<PI>();
                         List<PI> segmentData = new List<PI>();
                         st.Push(bi.pixels[i, j]);
-                        while (st.Count != 0) {
+                        while (st.Count != 0)
+                        {
                             var curr = st.Pop();
                             bi.segmentMap[curr.X, curr.Y] = segmentIndex;
                             segmentData.Add(curr);
                             var ok = false;
-                            for (var di = -1; di <= 1; di++) {
-                                for (var dj = -1; dj <= 1; dj++) {
+                            for (var di = -1; di <= 1; di++)
+                            {
+                                for (var dj = -1; dj <= 1; dj++)
+                                {
                                     if (di == 0 && dj == 0)
                                         continue;
                                     var next = curr.Move(di, dj, bi, out ok);
-                                    if (ok && next.colorIndex == curr.colorIndex && bi.segmentMap[next.X, next.Y] == default) {
+                                    if (ok && next.colorIndex == curr.colorIndex && bi.segmentMap[next.X, next.Y] == default)
+                                    {
                                         st.Push(next);
                                     }
                                 }
@@ -81,7 +77,8 @@ namespace Viewer {
             Console.WriteLine($"{smallTotal} small segments total");
             int currentSmall = 1;
             var segmentFromIndex = segments.ToDictionary(x => x.index);
-            while (true) {
+            while (true)
+            {
                 var smallCount = segments.Count(x => x.items.Length < small);
                 if (smallCount == 0)
                     break;
@@ -96,16 +93,20 @@ namespace Viewer {
                 var currIndex = curr.index;
                 int shortpath = Int32.MaxValue;
                 var targetSegment = curr;
-                for (var di = -1; di <= 1; di++) {
-                    for (var dj = -1; dj <= 1; dj++) {
+                for (var di = -1; di <= 1; di++)
+                {
+                    for (var dj = -1; dj <= 1; dj++)
+                    {
                         if (di == 0 && dj == 0)
                             continue;
                         if (shortpath == 1)
                             break;
                         var next = currFirstPoint.Move(di, dj, bi, out var success);
                         var path = 0;
-                        while (success) {
-                            if (bi.segmentMap[next.X, next.Y] != currIndex) {
+                        while (success)
+                        {
+                            if (bi.segmentMap[next.X, next.Y] != currIndex)
+                            {
                                 break;
                             }
 
@@ -113,10 +114,13 @@ namespace Viewer {
                             path++;
                         }
 
-                        if (success) {
+                        if (success)
+                        {
                             var segmentIndex = bi.SegmentFrom(next);
-                            if (segmentFromIndex.TryGetValue(segmentIndex, out var ns)) {
-                                if (ns.items.Length < shortpath) {
+                            if (segmentFromIndex.TryGetValue(segmentIndex, out var ns))
+                            {
+                                if (ns.items.Length < shortpath)
+                                {
                                     targetSegment = ns;
                                     shortpath = ns.items.Length;
                                 }
@@ -132,70 +136,145 @@ namespace Viewer {
             }
 
             Console.WriteLine($"\n==========");
-            for (int i = 0; i < bi.W; i++) {
-                Console.Write($"\rwriting {((i)*100)/bi.W}%        ");
-                for (int j = 0; j < bi.H; j++) {
-                    lb.SetPixel(i,j,bi.pixels[i,j].colorIndex);
+            for (int i = 0; i < bi.W; i++)
+            {
+                Console.Write($"\rwriting {((i) * 100) / bi.W}%        ");
+                for (int j = 0; j < bi.H; j++)
+                {
+                    lb.SetPixel(i, j, bi.pixels[i, j].colorIndex);
                 }
             }
 
+            lb.UnlockBits();
+            return reduced;
+        }
+        public static Bitmap GetMap(Bitmap reduced)
+        {                     
+            var map = new Bitmap(reduced.Width, reduced.Height, PixelFormat.Format8bppIndexed);
+            var palette = map.Palette;
+            palette.Entries[0] = Color.Black;
+            palette.Entries[1] = Color.White;
+            palette.Entries[2] = Color.FromArgb(0, 0, 0, 0);
+            map.Palette = palette;
+            var lb = new LockBitmap(reduced);
+            lb.LockBits();
+            var bi = new BI { H = (ushort)reduced.Height, pixels = new PI[reduced.Width, reduced.Height], W = (ushort)reduced.Width };
+            int totalColors = reduced.Palette.Entries.Length;
+            for (int i = 0; i < reduced.Width; i++)
+            {
+                for (int j = 0; j < reduced.Height; j++)
+                {
+                    var color = lb.GetPixel(i, j);
+                    bi.pixels[i, j] = new PI(i, j, color);
+                }
+            }
+            lb.UnlockBits();
+            lb = new LockBitmap(reduced);
+            lb.LockBits();
+
+            Console.WriteLine($"\n==========");
+            Console.WriteLine($"{totalColors} colors found");
+            bi.segmentMap = new int[reduced.Width, reduced.Height];
+            List<SI> segments = new List<SI>();
+            for (int i = 0; i < reduced.Width; i++)
+            {
+                for (int j = 0; j < reduced.Height; j++)
+                {
+                    var segmentIndex = bi.segmentMap[i, j];
+                    if (segmentIndex == default)
+                    {
+                        segmentIndex = segments.Count + 1;
+                        Stack<PI> st = new Stack<PI>();
+                        List<PI> segmentData = new List<PI>();
+                        st.Push(bi.pixels[i, j]);
+                        while (st.Count != 0)
+                        {
+                            var curr = st.Pop();
+                            bi.segmentMap[curr.X, curr.Y] = segmentIndex;
+                            segmentData.Add(curr);
+                            var ok = false;
+                            for (var di = -1; di <= 1; di++)
+                            {
+                                for (var dj = -1; dj <= 1; dj++)
+                                {
+                                    if (di == 0 && dj == 0)
+                                        continue;
+                                    var next = curr.Move(di, dj, bi, out ok);
+                                    if (ok && next.colorIndex == curr.colorIndex && bi.segmentMap[next.X, next.Y] == default)
+                                    {
+                                        st.Push(next);
+                                    }
+                                }
+                            }
+                        }
+
+                        segments.Add(new SI(segmentData.ToArray(), segmentIndex, segmentData[0].colorIndex));
+                        Console.Write($"\r{segmentIndex} segments found");
+                    }
+                }
+            }                        
             lb.UnlockBits();
             lb = new LockBitmap(map);
             lb.LockBits();
 
             Console.WriteLine($"\n==========");
-            foreach (var si in segments.OrderByDescending(x=>x.items.Length)) {
+            foreach (var si in segments.OrderByDescending(x => x.items.Length))
+            {
                 Console.Write($"{si.items.Length}, ");
             }
 
-//            Console.WriteLine($"\n==========");
-//            var colorFontValues = Enumerable.Range(0, colors.Count()).ToDictionary(x => x, x => GetColorIndexBytes(font, x+1));
-//            for (int i = 0; i < bi.W; i++) {
-//                for (int j = 0; j < bi.H; j++) {
-//                    lb.SetPixel(i,j, Color.White);
-//                }
-//            }
-//            
-//            for (var index = 0; index < segments.Count; index++) {
-//                Console.Write($"\rprocessing {index} of {segments.Count}");
-//                var si = segments[index];
-//                var sc = si.GetCenter(bi);
-//                var img = colorFontValues[si.colorIndex];
-//                var lt = sc.Move(img.Length/2, 0, bi, out var ltsSuccess);
-//                if (!ltsSuccess)
-//                    lt = bi.pixels[bi.W - 1, lt.Y];
-//                lt = lt.Move(0, img[0].Length/2, bi, out ltsSuccess);
-//                if (!ltsSuccess)
-//                    lt = bi.pixels[lt.X, bi.H-1];
-//                lt = lt.Move(-img.Length, 0, bi, out ltsSuccess);
-//                if (!ltsSuccess)
-//                    lt = bi.pixels[0, lt.Y];
-//                lt = lt.Move(0, -img[0].Length, bi, out ltsSuccess);
-//                if (!ltsSuccess)
-//                    lt = bi.pixels[lt.X, 0];
-//                
-//                var left = (int)lt.X;
-//                for (int i = 0; i < img.Length; i++) {
-//                    left++;
-//                    var top = (int)lt.Y;
-//                    for (int j = 0; j < img[0].Length; j++) {
-//                        top++;
-//
-//                        if (img[i][j])
-//                            lb.SetPixel(left, top, Color.Black);
-//                    }
-//                }
-//            }
+            //            Console.WriteLine($"\n==========");
+            //            var colorFontValues = Enumerable.Range(0, colors.Count()).ToDictionary(x => x, x => GetColorIndexBytes(font, x+1));
+            //            for (int i = 0; i < bi.W; i++) {
+            //                for (int j = 0; j < bi.H; j++) {
+            //                    lb.SetPixel(i,j, Color.White);
+            //                }
+            //            }
+            //            
+            //            for (var index = 0; index < segments.Count; index++) {
+            //                Console.Write($"\rprocessing {index} of {segments.Count}");
+            //                var si = segments[index];
+            //                var sc = si.GetCenter(bi);
+            //                var img = colorFontValues[si.colorIndex];
+            //                var lt = sc.Move(img.Length/2, 0, bi, out var ltsSuccess);
+            //                if (!ltsSuccess)
+            //                    lt = bi.pixels[bi.W - 1, lt.Y];
+            //                lt = lt.Move(0, img[0].Length/2, bi, out ltsSuccess);
+            //                if (!ltsSuccess)
+            //                    lt = bi.pixels[lt.X, bi.H-1];
+            //                lt = lt.Move(-img.Length, 0, bi, out ltsSuccess);
+            //                if (!ltsSuccess)
+            //                    lt = bi.pixels[0, lt.Y];
+            //                lt = lt.Move(0, -img[0].Length, bi, out ltsSuccess);
+            //                if (!ltsSuccess)
+            //                    lt = bi.pixels[lt.X, 0];
+            //                
+            //                var left = (int)lt.X;
+            //                for (int i = 0; i < img.Length; i++) {
+            //                    left++;
+            //                    var top = (int)lt.Y;
+            //                    for (int j = 0; j < img[0].Length; j++) {
+            //                        top++;
+            //
+            //                        if (img[i][j])
+            //                            lb.SetPixel(left, top, Color.Black);
+            //                    }
+            //                }
+            //            }
 
             Console.WriteLine($"\n==========");
-            for (int i = 0; i < bi.W; i++) {
-                Console.Write($"\rmap {((i)*100)/bi.W}%        ");
-                for (int j = 0; j < bi.H; j++) {
+            for (int i = 0; i < bi.W; i++)
+            {
+                Console.Write($"\rmap {((i) * 100) / bi.W}%        ");
+                for (int j = 0; j < bi.H; j++)
+                {
                     var shouldMark = false;
-                    if (i == 0 || j == 0 || i == bi.W - 1 || j == bi.H - 1) {
+                    if (i == 0 || j == 0 || i == bi.W - 1 || j == bi.H - 1)
+                    {
                         shouldMark = true;
                     }
-                    else {
+                    else
+                    {
                         var curr = bi.segmentMap[i, j];
                         if (curr != bi.segmentMap[i - 1, j] || curr != bi.segmentMap[i, j - 1] || curr != bi.segmentMap[i - 1, j - 1])
                             shouldMark = true;
@@ -212,7 +291,8 @@ namespace Viewer {
                 }
             }
             lb.UnlockBits();
-        }
+            return map;
+        }        
         static bool[][] GetColorIndexBytes(string fontName, int value) {
             var bitmap = new Bitmap(fontName);
             var lb = new LockBitmap(bitmap);
