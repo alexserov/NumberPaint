@@ -23,6 +23,8 @@ namespace Viewer
         }
         public static unsafe ImageSource ImageSourceFromBitmap(Bitmap source)
         {
+            if (source == null)
+                return null;
             var pf = PixelFormats.Bgra32;
             switch (source.PixelFormat)
             {

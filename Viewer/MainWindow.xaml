@@ -4,8 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Viewer"
+        xmlns:ui="clr-namespace:Viewer.UI"
         mc:Ignorable="d"
         WindowState="Maximized"
+        d:DataContext="{d:DesignData Type=local:MainWindow}"
         Title="MainWindow" Height="450" Width="800">
     <TabControl>
         <TabItem x:Name="main" Header="Main">
@@ -17,7 +19,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\3.png" Margin="5"></TextBox>
+                    <TextBox x:Name="source" Text="C:\Projects\NumberPaint\Viewer\Sample\2.png" Margin="5"></TextBox>
                     <Button Grid.Column="1" x:Name="executeButton" Content="Execute" Click="ButtonBase_OnClick" IsDefault="True" Margin="5"/>
                     <Button Grid.Column="2" x:Name="cancelButton" IsEnabled="False" Content="Cancel" Click="ButtonBase_OnClick2" IsDefault="True" Margin="5"/>
                 </Grid>
@@ -53,87 +55,31 @@
                     <StackPanel DockPanel.Dock="Bottom">
                         <ProgressBar/>
                     </StackPanel>
-                    <Grid DockPanel.Dock="Right" ShowGridLines="True">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition/>
-                            <ColumnDefinition/>
-                            <ColumnDefinition/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition/>
-                            <RowDefinition/>
-                        </Grid.RowDefinitions>
-                        <DockPanel Grid.Column="0" Grid.Row="0" LastChildFill="True">
-                            <TextBlock Text="Source:" DockPanel.Dock="Top"/>
-                            <Image x:Name="Source" DockPanel.Dock="Bottom"/>
-                        </DockPanel>
-                        <DockPanel Grid.Column="0" Grid.Row="1" LastChildFill="True">
-                            <TextBlock Text="Quantized:" DockPanel.Dock="Top"/>
-                            <Image x:Name="Quantized" DockPanel.Dock="Bottom"/>
-                        </DockPanel>
-                        <DockPanel Grid.Column="1" Grid.Row="0" LastChildFill="True">
-                            <TextBlock Text="Oilified:" DockPanel.Dock="Top"/>
-                            <Image x:Name="Oilified" DockPanel.Dock="Bottom"/>
-                        </DockPanel>
-                        <DockPanel Grid.Column="1" Grid.Row="1" LastChildFill="True">
-                            <TextBlock Text="Simplified:" DockPanel.Dock="Top"/>
-                            <Image x:Name="Simplified" DockPanel.Dock="Bottom"/>
-                        </DockPanel>
-                        <DockPanel Grid.Column="2" Grid.Row="0" LastChildFill="True">
-                            <TextBlock Text="Map:" DockPanel.Dock="Top"/>
-                            <Image x:Name="Map" DockPanel.Dock="Bottom"/>
-                        </DockPanel>
-                        <DockPanel Grid.Column="2" Grid.Row="1" LastChildFill="True">
-                            <TextBlock Text="Palette:" DockPanel.Dock="Top"/>
-                            <ItemsControl x:Name="OutPalette">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{Binding}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="64" Height="64" Margin="2"/>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </DockPanel>
-                    </Grid>
+                    <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Operations.OperationsSource}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <ui:FixedLineWrapPanel LineCount="2"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock Text="{Binding Header}" DockPanel.Dock="Top"/>
+                                    <Image Source="{Binding Result, Converter={ui:BitmapToImageSourceConverter}}" DockPanel.Dock="Bottom"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </DockPanel>
             </DockPanel>
         </TabItem>
-        <TabItem Header="Source">
-            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
-                <Image Source="{Binding ElementName=Source, Path=Source}" Stretch="None"/>
-            </ScrollViewer>
-        </TabItem>
-        <TabItem Header="Quantized">
-            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
-                <Image Source="{Binding ElementName=Quantized, Path=Source}" Stretch="None"/>
-            </ScrollViewer>
-        </TabItem>
-        <TabItem Header="Oilified">
-            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
-                <Image Source="{Binding ElementName=Oilified, Path=Source}" Stretch="None"/>
-            </ScrollViewer>
-        </TabItem>
-        <TabItem Header="Simplified">
-            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
-                <Image Source="{Binding ElementName=Simplified, Path=Source}" Stretch="None"/>
-            </ScrollViewer>
-        </TabItem>
-        <TabItem Header="Map">
-            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
-                <Image Source="{Binding ElementName=Map, Path=Source}" Stretch="None"/>
-            </ScrollViewer>
-        </TabItem>
-        <TabItem Header="HeatMap">
+        <!--<TabItem Header="HeatMap">
             <DockPanel LastChildFill="True">
                 <Button Content="Build" HorizontalAlignment="Center" Click="Button_Click_1"/>
                 <ScrollViewer DockPanel.Dock="Bottom" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
                     <Image x:Name="heatMap" Stretch="None"/>
                 </ScrollViewer>
             </DockPanel>
-        </TabItem>
+        </TabItem>-->
     </TabControl>
 </Window>
